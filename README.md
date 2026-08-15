@@ -1,19 +1,20 @@
 # Auto Mode Gate
 
-Auto Mode Gate is a planned, host-neutral permission gate for OpenCode and Pi. It aims to provide
-Claude Code Auto Mode-style decisions without depending on the rest of OpenCode Swarm.
+Auto Mode Gate is a host-neutral permission gate under development for OpenCode and Pi. It aims
+to provide Claude Code Auto Mode-style decisions without depending on the rest of OpenCode Swarm.
 
 ## Status
 
-**Design scaffold only.** This repository does not contain executable software, an installable
-package, commands, or supported configuration. Do not follow third-party installation instructions
-that claim otherwise.
+The host-neutral AMG2 core is implemented and tested. It classifies simple Bash, PowerShell, and
+CMD commands without executing them, blocks unknown or ambiguous input, tracks equivalent
+rejections in memory, and returns sanitized log records. The repository still has no host adapter,
+installable package, command, or supported configuration.
 
 Isolated probes have verified the pre-execution hooks in OpenCode 1.18.18 and Pi 0.84.1. No safe,
-host-neutral model-judge transport was found, so the first implementation will block ambiguous
-actions instead of invoking a model.
+host-neutral model-judge transport was found, so v1 blocks ambiguous actions instead of invoking a
+model.
 
-## Intended behavior
+## Current behavior
 
 ```text
 action
@@ -27,16 +28,23 @@ The shared policy will fail closed. Unknown actions, missing evidence, parser fa
 internal errors must not grant permission. Any future judge timeout or invalid response must also
 block, and a judge must never override a deterministic denial.
 
-## Planned scope
+## Implemented core
 
-- Shared permission engine and structured decisions.
-- Bash, PowerShell, and CMD analysis without command execution.
-- Deterministic risk rules before any model call.
-- Sanitized decision logs and repeated-rejection detection.
-- Independent OpenCode and Pi adapters using one policy core.
-- Global and project configuration, per-host activation, and shadow mode.
-- Shared conformance cases plus adapter-specific integration tests.
-- Verified installation, configuration, operation, and removal instructions for both hosts.
+- Host-neutral TypeScript types and structured denial codes.
+- Conservative analysis of one simple Bash, PowerShell, or CMD command.
+- An exact absolute executable path, matching identity, and explicit global trusted-path entry
+  required before any narrow read-only allowance; bare names, shell builtins, and unconfigured
+  paths remain ambiguous.
+- Deterministic precedence: invalid or unknown input, explicit denials, missing evidence,
+  ambiguity, then narrow read-only allowances.
+- Fail-closed conversion of `ambiguous` to `deny`.
+- In-memory repeated-rejection counts without persistent identifiers.
+- Sanitized log records that exclude commands, arguments, context, and secrets.
+- `off`, `shadow`, and `enforce` decisions with project configuration allowed to tighten global
+  mode and remove, but never add, trusted executable paths.
+- One shared conformance corpus and unit tests.
+
+Host adapters, installation, and distribution remain planned.
 
 ## Host parity
 
@@ -53,9 +61,18 @@ See [`docs/compatibility.md`](docs/compatibility.md) for the evidence baseline a
 
 ## Architecture
 
-The planned repository will keep the policy core independent from both hosts. Adapters will only
-load configuration, normalize host calls, provide verified context, and enforce the returned
-decision. See [`docs/architecture.md`](docs/architecture.md).
+The policy core is independent from both hosts and imports only Node standard-library modules.
+Future adapters will load configuration, normalize host calls, provide verified context, and
+enforce the returned decision. See [`docs/architecture.md`](docs/architecture.md).
+
+## Development
+
+The repository has no installed dependencies. The tests currently run on Node 24.9.0; no broader
+runtime compatibility is claimed. Run the conformance corpus and unit tests with:
+
+```text
+npm test
+```
 
 ## Upstream and license
 
@@ -76,7 +93,7 @@ compatibility claims.
 
 Intended mode: open-source maintained under MIT. This local repository has no public remote,
 issue tracker, contribution channel, or security contact yet. Those policies must be added before
-publication. Pull requests are not accepted during the pre-implementation phase.
+publication. Pull requests are not accepted during the pre-publication phase.
 
 Auto Mode Gate is an independent project and is not affiliated with Anthropic, OpenCode, Pi, or
 OpenCode Swarm.

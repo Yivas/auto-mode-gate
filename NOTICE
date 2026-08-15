@@ -9,9 +9,9 @@ This project was designed after studying OpenCode Swarm:
   License: MIT
   Copyright notice: Copyright (c) 2025
 
-No OpenCode Swarm source code is included in this documentation-only scaffold. If a future change
-copies or adapts a substantial portion, it must preserve the following upstream notice and update
-docs/upstream.md with the affected files and symbols.
+No OpenCode Swarm source code is included. If a future change copies or adapts a substantial
+portion, it must preserve the following upstream notice and update docs/upstream.md with the
+affected files and symbols.
 
 MIT License
 

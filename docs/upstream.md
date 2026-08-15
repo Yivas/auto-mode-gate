@@ -15,10 +15,11 @@ The initial design study examined these areas:
 | Pre-tool enforcement | `src/hooks/full-auto-permission.ts` | Design reference only |
 | Rejection counters and fail-closed state | `src/full-auto/state.ts` | Design reference only |
 | Critic oversight | `src/full-auto/oversight.ts` | Requirements only; implementation excluded |
-| Shell analysis | `src/hooks/shell-write-detect.ts` | Pending symbol-level review |
+| Shell analysis | `src/hooks/shell-write-detect.ts` | Design reference only; not copied |
 | Guardrail enforcement | `src/hooks/guardrails/tool-before.ts` | Fail-closed behavior reference |
 
-No upstream source code is present in the documentation-only scaffold.
+The AMG2 core is an independent implementation. No OpenCode Swarm source code was copied or
+adapted.
 
 ## Extraction rule
 

@@ -6,13 +6,13 @@ and commits must be written in English.
 
 ## Status and scope
 
-The repository is a documentation-only scaffold. Do not add executable code until the maintainer
-approves implementation after the contract, provenance, and host-hook review.
+The repository contains the host-neutral AMG2 permission core and its tests. OpenCode and Pi
+adapters, packaging, installation, and distribution are not implemented.
 
-The future product will contain a host-neutral permission core and separate OpenCode and Pi
-adapters. It must not contain Swarm orchestration, private planning, local profiles, prompts,
-objectives, credentials, sessions, real logs, or operational configuration values. Generic schemas,
-sanitized log formats, documentation, and fictional examples are allowed.
+The product uses the shared core through separate OpenCode and Pi adapters. It must not contain
+Swarm orchestration, private planning, local profiles, prompts, objectives, credentials, sessions,
+real logs, or operational configuration values. Generic schemas, sanitized log formats,
+documentation, and fictional examples are allowed.
 
 ## Rules
 

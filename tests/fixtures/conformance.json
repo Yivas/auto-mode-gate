@@ -1,0 +1,148 @@
+[
+  {
+    "name": "allows a simple Bash read",
+    "config": { "mode": "enforce", "trustedExecutablePaths": ["/trusted/bin/ls"] },
+    "input": { "kind": "shell", "tool": "shell", "shell": "bash", "command": "/trusted/bin/ls -la \"folder with spaces\"", "executable": { "name": "ls", "path": "/trusted/bin/ls", "source": "trusted-path" } },
+    "expected": { "policyVerdict": "allow", "effect": "allow", "code": "AMG_ALLOW_SAFE_COMMAND", "blocked": false }
+  },
+  {
+    "name": "denies a destructive Bash command",
+    "input": { "kind": "shell", "tool": "shell", "shell": "bash", "command": "rm -rf build" },
+    "expected": { "policyVerdict": "deny", "effect": "deny", "code": "AMG_DENY_DANGEROUS_COMMAND", "blocked": true }
+  },
+  {
+    "name": "denies a dangerous find option",
+    "input": { "kind": "shell", "tool": "shell", "shell": "bash", "command": "find . -delete" },
+    "expected": { "policyVerdict": "deny", "effect": "deny", "code": "AMG_DENY_DANGEROUS_COMMAND", "blocked": true }
+  },
+  {
+    "name": "denies find null output files",
+    "input": { "kind": "shell", "tool": "shell", "shell": "bash", "command": "find . -fprint0 report.bin" },
+    "expected": { "policyVerdict": "deny", "effect": "deny", "code": "AMG_DENY_DANGEROUS_COMMAND", "blocked": true }
+  },
+  {
+    "name": "fails closed on options assembled from adjacent quotes",
+    "config": { "mode": "enforce", "trustedExecutablePaths": ["/trusted/bin/find"] },
+    "input": { "kind": "shell", "tool": "shell", "shell": "bash", "command": "/trusted/bin/find . \"-ex\"\"ec\" touch /tmp/pwned {} \\;", "executable": { "name": "find", "path": "/trusted/bin/find", "source": "trusted-path" } },
+    "expected": { "policyVerdict": "ambiguous", "effect": "deny", "code": "AMG_DENY_AMBIGUOUS", "blocked": true }
+  },
+  {
+    "name": "fails closed on escaped shell line continuations",
+    "config": { "mode": "enforce", "trustedExecutablePaths": ["/trusted/bin/find"] },
+    "input": { "kind": "shell", "tool": "shell", "shell": "bash", "command": "/trusted/bin/find . -ex\\\nec /bin/touch /tmp/pwned {} \\;", "executable": { "name": "find", "path": "/trusted/bin/find", "source": "trusted-path" } },
+    "expected": { "policyVerdict": "deny", "effect": "deny", "code": "AMG_DENY_DANGEROUS_COMMAND", "blocked": true }
+  },
+  {
+    "name": "allows a narrow read-only Git command",
+    "config": { "mode": "enforce", "trustedExecutablePaths": ["/trusted/bin/git"] },
+    "input": { "kind": "shell", "tool": "shell", "shell": "bash", "command": "/trusted/bin/git rev-parse --show-toplevel", "executable": { "name": "git", "path": "/trusted/bin/git", "source": "trusted-path" } },
+    "expected": { "policyVerdict": "allow", "effect": "allow", "code": "AMG_ALLOW_SAFE_COMMAND", "blocked": false }
+  },
+  {
+    "name": "fails closed on Git commands with configurable filters",
+    "input": { "kind": "shell", "tool": "shell", "shell": "bash", "command": "git diff" },
+    "expected": { "policyVerdict": "ambiguous", "effect": "deny", "code": "AMG_DENY_AMBIGUOUS", "blocked": true }
+  },
+  {
+    "name": "denies a mutating Git command",
+    "input": { "kind": "shell", "tool": "shell", "shell": "bash", "command": "git reset --hard" },
+    "expected": { "policyVerdict": "deny", "effect": "deny", "code": "AMG_DENY_DANGEROUS_COMMAND", "blocked": true }
+  },
+  {
+    "name": "denies Git output redirection options",
+    "input": { "kind": "shell", "tool": "shell", "shell": "bash", "command": "git diff --output=report.txt" },
+    "expected": { "policyVerdict": "deny", "effect": "deny", "code": "AMG_DENY_DANGEROUS_COMMAND", "blocked": true }
+  },
+  {
+    "name": "fails closed on a Bash pipeline",
+    "input": { "kind": "shell", "tool": "shell", "shell": "bash", "command": "cat file | grep secret" },
+    "expected": { "policyVerdict": "ambiguous", "effect": "deny", "code": "AMG_DENY_AMBIGUOUS", "blocked": true }
+  },
+  {
+    "name": "fails closed on quoted Bash command substitution",
+    "input": { "kind": "shell", "tool": "shell", "shell": "bash", "command": "echo \"`rm -rf build`\"" },
+    "expected": { "policyVerdict": "ambiguous", "effect": "deny", "code": "AMG_DENY_AMBIGUOUS", "blocked": true }
+  },
+  {
+    "name": "fails closed on Bash pathname expansion",
+    "input": { "kind": "shell", "tool": "shell", "shell": "bash", "command": "cat *" },
+    "expected": { "policyVerdict": "ambiguous", "effect": "deny", "code": "AMG_DENY_AMBIGUOUS", "blocked": true }
+  },
+  {
+    "name": "fails closed on Bash extglob expansion",
+    "input": { "kind": "shell", "tool": "shell", "shell": "bash", "command": "cat !(public.txt)" },
+    "expected": { "policyVerdict": "ambiguous", "effect": "deny", "code": "AMG_DENY_AMBIGUOUS", "blocked": true }
+  },
+  {
+    "name": "fails closed on an unknown Bash command",
+    "input": { "kind": "shell", "tool": "shell", "shell": "bash", "command": "custom-tool inspect" },
+    "expected": { "policyVerdict": "ambiguous", "effect": "deny", "code": "AMG_DENY_AMBIGUOUS", "blocked": true }
+  },
+  {
+    "name": "blocks an unterminated Bash quote",
+    "input": { "kind": "shell", "tool": "shell", "shell": "bash", "command": "cat 'unfinished" },
+    "expected": { "policyVerdict": "deny", "effect": "deny", "code": "AMG_DENY_INVALID_INPUT", "blocked": true }
+  },
+  {
+    "name": "allows a bound PowerShell executable",
+    "config": { "mode": "enforce", "trustedExecutablePaths": ["C:\\trusted\\where.exe"] },
+    "input": { "kind": "shell", "tool": "shell", "shell": "powershell", "command": "C:\\trusted\\where.exe cmd.exe", "executable": { "name": "where", "path": "C:\\trusted\\where.exe", "source": "trusted-path" } },
+    "expected": { "policyVerdict": "allow", "effect": "allow", "code": "AMG_ALLOW_SAFE_COMMAND", "blocked": false }
+  },
+  {
+    "name": "fails closed on unbound PowerShell cmdlets",
+    "input": { "kind": "shell", "tool": "shell", "shell": "powershell", "command": "Get-Content file.txt -OutVariable AMG_STATE" },
+    "expected": { "policyVerdict": "ambiguous", "effect": "deny", "code": "AMG_DENY_AMBIGUOUS", "blocked": true }
+  },
+  {
+    "name": "denies a PowerShell write",
+    "input": { "kind": "shell", "tool": "shell", "shell": "powershell", "command": "Set-Content file.txt value" },
+    "expected": { "policyVerdict": "deny", "effect": "deny", "code": "AMG_DENY_DANGEROUS_COMMAND", "blocked": true }
+  },
+  {
+    "name": "fails closed on PowerShell expansion",
+    "input": { "kind": "shell", "tool": "shell", "shell": "powershell", "command": "Get-Content $env:FILE" },
+    "expected": { "policyVerdict": "ambiguous", "effect": "deny", "code": "AMG_DENY_AMBIGUOUS", "blocked": true }
+  },
+  {
+    "name": "allows a bound CMD executable",
+    "config": { "mode": "enforce", "trustedExecutablePaths": ["C:\\trusted\\where.exe"] },
+    "input": { "kind": "shell", "tool": "shell", "shell": "cmd", "command": "C:\\trusted\\where.exe cmd.exe", "executable": { "name": "where", "path": "C:\\trusted\\where.exe", "source": "trusted-path" } },
+    "expected": { "policyVerdict": "allow", "effect": "allow", "code": "AMG_ALLOW_SAFE_COMMAND", "blocked": false }
+  },
+  {
+    "name": "denies a CMD delete",
+    "input": { "kind": "shell", "tool": "shell", "shell": "cmd", "command": "del /q file.txt" },
+    "expected": { "policyVerdict": "deny", "effect": "deny", "code": "AMG_DENY_DANGEROUS_COMMAND", "blocked": true }
+  },
+  {
+    "name": "fails closed on CMD expansion",
+    "input": { "kind": "shell", "tool": "shell", "shell": "cmd", "command": "type %FILE%" },
+    "expected": { "policyVerdict": "ambiguous", "effect": "deny", "code": "AMG_DENY_AMBIGUOUS", "blocked": true }
+  },
+  {
+    "name": "fails closed on quoted CMD expansion",
+    "input": { "kind": "shell", "tool": "shell", "shell": "cmd", "command": "type \"%FILE%\"" },
+    "expected": { "policyVerdict": "ambiguous", "effect": "deny", "code": "AMG_DENY_AMBIGUOUS", "blocked": true }
+  },
+  {
+    "name": "fails closed on caret-prefixed CMD expansion",
+    "input": { "kind": "shell", "tool": "shell", "shell": "cmd", "command": "type ^%FILE^%" },
+    "expected": { "policyVerdict": "ambiguous", "effect": "deny", "code": "AMG_DENY_AMBIGUOUS", "blocked": true }
+  },
+  {
+    "name": "blocks an unknown shell",
+    "input": { "kind": "shell", "tool": "shell", "shell": "fish", "command": "pwd" },
+    "expected": { "policyVerdict": "deny", "effect": "deny", "code": "AMG_DENY_UNKNOWN_ACTION", "blocked": true }
+  },
+  {
+    "name": "blocks a truncated command",
+    "input": { "kind": "shell", "tool": "shell", "shell": "bash", "command": "cat file", "truncated": true },
+    "expected": { "policyVerdict": "deny", "effect": "deny", "code": "AMG_DENY_INVALID_INPUT", "blocked": true }
+  },
+  {
+    "name": "blocks an empty command",
+    "input": { "kind": "shell", "tool": "shell", "shell": "bash", "command": "   " },
+    "expected": { "policyVerdict": "deny", "effect": "deny", "code": "AMG_DENY_INVALID_INPUT", "blocked": true }
+  }
+]
