@@ -10,13 +10,12 @@ host tool call
    ├─ normalize available action and context
    └─ shared core
       ├─ deterministic allow, deny, or ambiguous
-      ├─ permission judge for ambiguous actions only
+      ├─ fail-closed denial for ambiguous actions
       ├─ repeated-rejection tracking
       └─ structured decision and sanitized log record
    └─ host enforcement
       ├─ allow: continue
-      ├─ deny: block
-      └─ ask: confirm when supported, otherwise block
+      └─ deny: block
 ```
 
 ## Shared core
@@ -30,8 +29,7 @@ Minimum responsibilities:
 - normalize the policy inputs required by both hosts;
 - analyze Bash, PowerShell, and CMD without execution;
 - apply deterministic risk and permission rules;
-- invoke a generic judge contract only for ambiguous actions;
-- validate judge output and enforce timeout behavior;
+- deny ambiguous actions with a stable reason code;
 - identify repeated equivalent rejections;
 - produce stable reason codes, safe messages, and sanitized log fields.
 
@@ -41,26 +39,26 @@ Adapters will load host-specific configuration, collect only verified context, n
 calls, invoke the core, and enforce its result. They will not contain duplicate risk policy.
 
 The OpenCode adapter is planned around `tool.execute.before`. The Pi adapter is planned around
-`tool_call`, with `ctx.ui.confirm` for user confirmation when UI is available.
+`tool_call`. Pi's `ctx.ui.confirm` remains a tested capability for a future policy path.
 
 An adapter must declare missing capabilities. It must never invent agent identity, session
 ancestry, arguments, objectives, or recent actions.
 
-## Permission judge
+## Deferred permission judge
 
-The core will define a strict request and response contract. The model is selected by the user;
-the project will not hard-code one. The transport remains undecided until current host-native paths
-are tested for recursion, tool isolation, authentication, cancellation, timeout, and error
-handling.
+V1 will not define or invoke a model judge. Isolated probes found a Pi-specific model call, but no
+equivalent safe OpenCode API or host-neutral transport was verified. The core therefore converts
+every ambiguous result into a denial with a stable reason code.
 
-The judge cannot override deterministic denials. Missing judge support, timeout, malformed output,
-or an internal error yields a safe denial or user confirmation where the adapter supports it.
+A later version may add a user-selected model after both hosts have a tested transport with tool
+isolation, recursion prevention, authentication, cancellation, timeout, and strict output
+validation. A judge will never override a deterministic denial.
 
 ## Configuration and modes
 
 The logical configuration will support global and project scopes, independent adapter activation,
-judge model selection, timeouts, log settings, and `off`, `enforce`, and `shadow` modes. Project
-configuration may tighten global policy but must not relax deterministic denials.
+log settings, and `off`, `enforce`, and `shadow` modes. Project configuration may tighten global
+policy but must not relax deterministic denials.
 
 Shadow mode records what the gate would decide and never claims to protect the host.
 

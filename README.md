@@ -9,8 +9,9 @@ Claude Code Auto Mode-style decisions without depending on the rest of OpenCode 
 package, commands, or supported configuration. Do not follow third-party installation instructions
 that claim otherwise.
 
-The first implementation will not begin until the pre-execution hooks and model-judge path are
-verified against pinned public releases in isolated profiles.
+Isolated probes have verified the pre-execution hooks in OpenCode 1.18.18 and Pi 0.84.1. No safe,
+host-neutral model-judge transport was found, so the first implementation will block ambiguous
+actions instead of invoking a model.
 
 ## Intended behavior
 
@@ -19,21 +20,18 @@ action
 └─ deterministic policy
    ├─ safe      -> continue
    ├─ dangerous -> block
-   └─ ambiguous -> permission judge
-                   ├─ approve -> continue
-                   └─ deny or ask -> block or request confirmation
+   └─ ambiguous -> block
 ```
 
-The shared policy will fail closed. Unknown actions, missing evidence, parser failures, judge
-timeouts, invalid responses, and internal errors must not grant permission. A deterministic denial
-cannot be overridden by the judge.
+The shared policy will fail closed. Unknown actions, missing evidence, parser failures, and
+internal errors must not grant permission. Any future judge timeout or invalid response must also
+block, and a judge must never override a deterministic denial.
 
 ## Planned scope
 
 - Shared permission engine and structured decisions.
 - Bash, PowerShell, and CMD analysis without command execution.
 - Deterministic risk rules before any model call.
-- Generic `permission_judge` contract with user-selected model.
 - Sanitized decision logs and repeated-rejection detection.
 - Independent OpenCode and Pi adapters using one policy core.
 - Global and project configuration, per-host activation, and shadow mode.
@@ -44,9 +42,12 @@ cannot be overridden by the judge.
 
 Parity means the same evidence produces the same policy verdict. Host interaction may differ.
 
-- Pi currently exposes a blocking `tool_call` event and can request confirmation through its UI.
-- OpenCode currently exposes `tool.execute.before`, but the researched API does not provide a
-  synchronous generic confirmation dialog. An `ask` verdict must therefore block on OpenCode.
+- Pi 0.84.1 exposes a blocking `tool_call` event and can request confirmation through its UI.
+- OpenCode 1.18.18 exposes `tool.execute.before`, but no synchronous generic confirmation dialog
+  was verified for that baseline. Any future `ask` verdict must block on OpenCode.
+
+Pi confirmation remains a tested host capability, not a v1 policy path. V1 blocks ambiguous
+actions on both hosts to preserve semantic parity.
 
 See [`docs/compatibility.md`](docs/compatibility.md) for the evidence baseline and limitations.
 
