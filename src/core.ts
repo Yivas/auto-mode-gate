@@ -177,7 +177,7 @@ export class RejectionTracker {
     const key = createHash("sha256").update(code).update("\0").update(equivalenceInput).digest("hex");
     const count = (this.#counts.get(key) ?? 0) + 1;
 
-    // ponytail: cap session memory; use an LRU only if long sessions need finer recurrence history.
+    // Cap session memory; use an LRU only if long sessions need finer recurrence history.
     if (!this.#counts.has(key) && this.#counts.size >= MAX_REJECTION_KEYS) {
       const oldestKey = this.#counts.keys().next().value;
       if (oldestKey !== undefined) {

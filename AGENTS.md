@@ -7,8 +7,8 @@ and commits must be written in English.
 ## Status and scope
 
 The repository contains the host-neutral permission core, OpenCode and Pi runtime adapters, strict
-file-based configuration, source-install documentation, and tests. Version 0.1.0 is prepared but
-no tag, release, or publication exists.
+file-based configuration, npm and source-install documentation, and tests. Version 0.1.0 is the
+first public release on GitHub and npm.
 
 The product uses the shared core through separate OpenCode and Pi adapters. It must not contain
 Swarm orchestration, private planning, local profiles, prompts, objectives, credentials, sessions,

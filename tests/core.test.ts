@@ -297,7 +297,7 @@ test("rejection tracking has a fixed memory ceiling", () => {
   assert.equal(gate.evaluate(input).repeatedRejectionCount, 1);
 });
 
-test("logs exclude commands, arguments, context, secrets, and identifiers", () => {
+test("logs exclude sensitive input and stay within the size limit", () => {
   const secret = "fictional-secret-value";
   const decision = new AutoModeGate().evaluate({
     kind: "shell",
@@ -323,6 +323,20 @@ test("logs exclude commands, arguments, context, secrets, and identifiers", () =
     "source",
     "tool",
   ]);
+
+  for (const fixture of fixtures) {
+    for (const mode of ["off", "shadow", "enforce"] as const) {
+      for (const host of ["unknown", "opencode", "pi"] as const) {
+        const input =
+          typeof fixture.input === "object" && fixture.input !== null && !Array.isArray(fixture.input)
+            ? { ...fixture.input, host }
+            : fixture.input;
+        const log = new AutoModeGate({ ...fixture.config, mode }).evaluate(input).log;
+        const largestCountLog = { ...log, repeatedRejectionCount: Number.MAX_SAFE_INTEGER };
+        assert.ok(Buffer.byteLength(JSON.stringify(largestCountLog), "utf8") <= 512);
+      }
+    }
+  }
 });
 
 test("malformed values and oversized input fail closed", () => {

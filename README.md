@@ -7,9 +7,10 @@ model judge.
 ## Status
 
 The core, OpenCode plugin, Pi extension, file-based configuration, sanitized JSONL logs, and
-source-install flow are implemented and tested. Version 0.1.0 is prepared behind npm's `private`
-publication guard; there is no published package, tag, or release. The installation commands below
-load a local checkout and support only the validated baselines:
+installation flows are implemented and tested. Version 0.1.0 is published on
+[npm](https://www.npmjs.com/package/auto-mode-gate) and
+[GitHub](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.1.0). It supports only the
+validated baselines:
 
 - OpenCode 1.18.18;
 - Pi 0.84.1;
@@ -30,23 +31,59 @@ trusted-path list. Bare names, shell builtins, unsupported syntax, missing evide
 configuration, and internal errors fail closed. Native host permissions still apply after an
 Auto Mode Gate allowance.
 
+## Install from npm
+
+Review the package source before installing it. Host plugins and extensions run with the user's
+system permissions.
+
+### OpenCode
+
+Install for the current project:
+
+```text
+opencode plugin auto-mode-gate@0.1.0
+```
+
+Add `--global` to install it for every project. Verify the resolved `plugin` list:
+
+```text
+opencode debug config
+```
+
+### Pi
+
+Install globally:
+
+```text
+pi install npm:auto-mode-gate@0.1.0
+```
+
+Add `-l` for a project-local installation. Verify the package entry:
+
+```text
+pi list
+```
+
 ## Install from a checkout
 
 Review the checkout before loading it. Host plugins and extensions run with the user's system
 permissions.
 
-The commands below were tested with Windows PowerShell 5.1 in isolated profiles. Set `$scope` to
-`project` or `global`, run the command from the repository root, then restart the host. They create
-one UTF-8 loader file and do not edit host settings. Keep the checkout at the same path while the
-loader is installed.
+The global loader flow was tested with Windows PowerShell 5.1 in isolated host profiles. The
+project-scope path handling was checked against a separate temporary project without starting the
+hosts. Run the commands from the checkout root. Set `$scope` to `project` or `global`; for project
+scope, set `$targetProject` to the project that should load the gate. Then restart the host. The
+commands create one UTF-8 loader file and do not edit host settings. Keep the checkout at the same
+path while the loader is installed.
 
 ### OpenCode
 
 ```powershell
 $scope = "project"
+$targetProject = "C:\path\to\project"
 $source = [System.Uri]::new((Resolve-Path .\src\opencode-runtime.ts).Path).AbsoluteUri
 $pluginRoot = if ($scope -eq "project") {
-  Join-Path (Get-Location) ".opencode\plugins"
+  Join-Path (Resolve-Path $targetProject).Path ".opencode\plugins"
 } elseif ($env:OPENCODE_CONFIG_DIR) {
   Join-Path $env:OPENCODE_CONFIG_DIR "plugins"
 } else {
@@ -61,7 +98,12 @@ OpenCode loads project plugins from `.opencode/plugins/` and global plugins from
 plugin directory. Verify discovery with:
 
 ```powershell
-opencode debug config
+if ($scope -eq "project") {
+  Push-Location $targetProject
+  try { opencode debug config } finally { Pop-Location }
+} else {
+  opencode debug config
+}
 ```
 
 The resolved `plugin` list must contain `auto-mode-gate.ts`.
@@ -70,9 +112,10 @@ The resolved `plugin` list must contain `auto-mode-gate.ts`.
 
 ```powershell
 $scope = "project"
+$targetProject = "C:\path\to\project"
 $source = [System.Uri]::new((Resolve-Path .\src\pi-runtime.ts).Path).AbsoluteUri
 $extensionRoot = if ($scope -eq "project") {
-  Join-Path (Get-Location) ".pi\extensions\auto-mode-gate"
+  Join-Path (Resolve-Path $targetProject).Path ".pi\extensions\auto-mode-gate"
 } elseif ($env:PI_CODING_AGENT_DIR) {
   Join-Path $env:PI_CODING_AGENT_DIR "extensions\auto-mode-gate"
 } else {
@@ -87,7 +130,12 @@ Pi loads project extensions only after the project is trusted. A startup-only ch
 contact model providers is:
 
 ```powershell
-pi --offline --list-models
+if ($scope -eq "project") {
+  Push-Location $targetProject
+  try { pi --offline --list-models } finally { Pop-Location }
+} else {
+  pi --offline --list-models
+}
 ```
 
 Pi 0.84.1 does not list auto-discovered extension files in `pi list`; that command lists installed
@@ -168,9 +216,10 @@ blocks with `AMG_DENY_INTERNAL_ERROR`. Logging is disabled when `logPath` is abs
 
 ## Operation
 
-OpenCode and Pi activate independently through their loader files. Removing one loader leaves the
-other host unchanged. Auto Mode Gate adds no status, enable, disable, or configuration command;
-those controls remain file-based because neither shared host contract requires another command.
+OpenCode and Pi activate independently through their package entries or source loader files.
+Removing one installation leaves the other host unchanged. Auto Mode Gate adds no status, enable,
+disable, or configuration command; those controls remain host- and file-based because neither
+shared host contract requires another command.
 
 Both hosts enforce only calls to their built-in `bash` tool. Other tools remain under native host
 permissions. A child process must load its own adapter. See
@@ -178,23 +227,24 @@ permissions. A child process must load its own adapter. See
 
 ## Remove
 
-Delete only the loader created during installation, then restart the host.
+For an npm installation, remove `auto-mode-gate@0.1.0` from OpenCode's `plugin` list. OpenCode
+1.18.18 has no plugin removal subcommand. Remove the Pi package with the same scope used to install
+it:
 
-OpenCode:
+```text
+pi remove npm:auto-mode-gate
+pi remove npm:auto-mode-gate -l
+```
+
+For a source installation, delete only its loader, then restart the host:
 
 ```powershell
 Remove-Item <plugin-root>\auto-mode-gate.ts
-```
-
-Pi:
-
-```powershell
 Remove-Item -Recurse <extension-root>\auto-mode-gate
 ```
 
-These commands do not edit host settings or remove `.auto-mode-gate.json`, the global Auto Mode
-Gate configuration, logs, or the source checkout. Remove those separately only when they are no
-longer needed.
+Removal does not delete `.auto-mode-gate.json`, the global Auto Mode Gate configuration, logs, or
+a source checkout. Remove those separately only when they are no longer needed.
 
 ## Development
 
@@ -205,8 +255,9 @@ conformance tests with:
 npm test
 ```
 
-The strict TypeScript check and clean-profile commands used for the validated baseline are recorded
-in the private project evidence. No broader Node or host compatibility is claimed.
+The strict TypeScript check requires external compiler and Node type-definition paths; the exact
+versions, flags, and command used for the validated baseline are recorded in the private project
+evidence. No broader Node or host compatibility is claimed.
 
 ## Upstream and license
 
@@ -219,9 +270,10 @@ See [`docs/upstream.md`](docs/upstream.md), [`NOTICE`](NOTICE), and [`LICENSE`](
 
 ## Participation
 
-Intended mode: open-source maintained under MIT. This local repository has no public remote, issue
-tracker, contribution channel, or security contact. Pull requests are not accepted during the
-pre-publication phase.
+Auto Mode Gate is maintained under MIT. Report reproducible bugs through
+[GitHub Issues](https://github.com/Yivas/auto-mode-gate/issues). Report vulnerabilities through
+[GitHub private vulnerability reporting](https://github.com/Yivas/auto-mode-gate/security/advisories/new).
+Pull requests are not currently accepted.
 
 Auto Mode Gate is independent and is not affiliated with Anthropic, OpenCode, Pi, or OpenCode
 Swarm.

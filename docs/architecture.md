@@ -92,9 +92,9 @@ the event context and caches one adapter per project directory. Pi's `ctx.ui.con
 unused in v1; ambiguous calls block even when UI exists.
 
 The adapters retain source-level factories for tests and embedding. The runtime entries add strict
-file discovery without modifying host settings. OpenCode and Pi activate independently through
-small loader files. `off` and `shadow` preserve the core's non-blocking behavior; project
-configuration cannot relax global policy or add trusted paths.
+file discovery without modifying host settings. OpenCode and Pi activate independently through the
+npm package or small source loader files. `off` and `shadow` preserve the core's non-blocking
+behavior; project configuration cannot relax global policy or add trusted paths.
 
 Each host process must load its adapter. The hooks do not provide verified child-process identity
 or guarantee that a separately launched child loaded the gate. The adapters do not infer session

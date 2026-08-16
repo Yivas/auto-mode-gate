@@ -8,4 +8,4 @@
 - Add optional sanitized JSONL decision logs.
 - Add source installation and removal instructions for the validated host baselines.
 
-This version is prepared but not published, tagged, or released.
+This is the first public release.

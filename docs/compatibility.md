@@ -1,6 +1,6 @@
 # Compatibility Baseline
 
-Auto Mode Gate has no product release yet. The versions below are validated host-contract
+Auto Mode Gate 0.1.0 is the first public release. The versions below are validated host-contract
 baselines, not broad compatibility claims.
 
 | Host | Executed baseline | Pre-execution hook | User confirmation | V1 consequence |
@@ -74,8 +74,8 @@ Both adapters block ambiguity while the permission judge is deferred.
 - Pi 0.84.1 exposes a host-native model call; no equivalent isolated API was verified in OpenCode 1.18.18.
 - No common permission-judge transport is enabled in v1.
 - Coverage is limited to execution paths proven to pass through the documented hooks.
-- Runtime entries discover strict global and project JSON files, but source installation still
-  points to a local checkout; no package release or update channel exists.
+- Runtime entries discover strict global and project JSON files. The npm package and source
+  installation use the same TypeScript entries; a source loader still depends on its checkout path.
 - The adapters require explicit shell evidence and do not rewrite bare executable names.
 - A trusted path is configuration authority, not an immutable file handle; replacing a trusted file
   between policy evaluation and execution remains outside the hook contract.
