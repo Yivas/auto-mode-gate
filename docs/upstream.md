@@ -18,7 +18,7 @@ The initial design study examined these areas:
 | Shell analysis | `src/hooks/shell-write-detect.ts` | Design reference only; not copied |
 | Guardrail enforcement | `src/hooks/guardrails/tool-before.ts` | Fail-closed behavior reference |
 
-The AMG2 core is an independent implementation. No OpenCode Swarm source code was copied or
+The current core is an independent implementation. No OpenCode Swarm source code was copied or
 adapted.
 
 ## Extraction rule

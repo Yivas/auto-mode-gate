@@ -36,7 +36,24 @@ already contain the exact trusted path evaluated by the core, and that `shadow`,
 configuration keep the core's restrictions.
 
 These tests exercise the pinned hook shapes without starting either host. The executed baselines in
-the table remain evidence for hook ordering; AMG3 did not modify or start active installations.
+the table remain evidence for hook ordering; the adapter implementation did not modify or start
+active installations.
+
+## Source-install verification
+
+The source-install validation loaded the OpenCode and Pi runtime entries from local checkout URLs
+in isolated temporary profiles. OpenCode 1.18.18 discovered the loader through its configured
+plugin directory and
+reported it through `opencode debug config`; deleting that loader removed it while preserving the
+bootstrapped unrelated host configuration byte for byte. OpenCode may consult its public model
+catalog during startup.
+
+Pi 0.84.1 loaded the extension from a temporary `PI_CODING_AGENT_DIR` during
+`pi --offline --list-models`. Deleting the extension directory disabled it and left unrelated
+settings byte for byte unchanged. Neither test read credentials, installed packages, or modified
+active host profiles. Runtime tests separately exercised `off`, `shadow`, `enforce`, global/project
+precedence, sanitized logs, malformed configuration, and log-write failure through both host entry
+points.
 
 ## Semantic parity
 
@@ -57,14 +74,15 @@ Both adapters block ambiguity while the permission judge is deferred.
 - Pi 0.84.1 exposes a host-native model call; no equivalent isolated API was verified in OpenCode 1.18.18.
 - No common permission-judge transport is enabled in v1.
 - Coverage is limited to execution paths proven to pass through the documented hooks.
-- Adapter factories accept logical configuration objects; file discovery, installation, removal,
-  and active-host clean-profile tests remain deferred.
+- Runtime entries discover strict global and project JSON files, but source installation still
+  points to a local checkout; no package release or update channel exists.
 - The adapters require explicit shell evidence and do not rewrite bare executable names.
 - A trusted path is configuration authority, not an immutable file handle; replacing a trusted file
   between policy evaluation and execution remains outside the hook contract.
 
 ## Before claiming support
 
-Each supported release must pass isolated integration tests that prove the hook blocks before a
+Each supported release must repeat isolated integration tests that prove the hook blocks before a
 stub side effect, timeout and error paths fail closed, configuration does not overwrite user files,
-and removal leaves unrelated configuration unchanged.
+and removal leaves unrelated configuration unchanged. Source-profile results do not authorize a
+package release or broader compatibility claim.

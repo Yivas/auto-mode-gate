@@ -1,6 +1,7 @@
 import { AutoModeGate, mergeConfig } from "./core.ts";
 import { normalizeExecutableName } from "./shell.ts";
 import type {
+  DecisionLogRecord,
   GateConfig,
   GateDecision,
   KnownHost,
@@ -12,6 +13,7 @@ export interface AdapterOptions {
   readonly shell?: Shell;
   readonly globalConfig?: GateConfig;
   readonly projectConfig?: Partial<GateConfig>;
+  readonly onDecision?: (log: DecisionLogRecord) => void;
 }
 
 export interface AdapterShellCall {
@@ -51,6 +53,7 @@ export function createShellAdapter(host: KnownHost, options: AdapterOptions = {}
             truncated: call.truncated,
             host,
           });
+          options.onDecision?.(decision.log);
           return Object.freeze({ decision, command });
         } catch {
           return internalError(gate);

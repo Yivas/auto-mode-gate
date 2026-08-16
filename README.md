@@ -1,21 +1,21 @@
 # Auto Mode Gate
 
-Auto Mode Gate is a host-neutral permission gate under development for OpenCode and Pi. It aims
-to provide Claude Code Auto Mode-style decisions without depending on the rest of OpenCode Swarm.
+Auto Mode Gate is a host-neutral permission gate for OpenCode and Pi. It applies one deterministic
+policy before Bash tool calls execute. V1 blocks unknown or ambiguous actions and does not invoke a
+model judge.
 
 ## Status
 
-The host-neutral core and source-level OpenCode and Pi adapters are implemented and tested. The
-core classifies simple Bash, PowerShell, and CMD commands without executing them, blocks unknown
-or ambiguous input, tracks equivalent rejections in memory, and returns sanitized log records. The
-repository still has no installable package, command, configuration file discovery, or supported
-host release.
+The core, OpenCode plugin, Pi extension, file-based configuration, sanitized JSONL logs, and
+source-install flow are implemented and tested. Version 0.1.0 is prepared behind npm's `private`
+publication guard; there is no published package, tag, or release. The installation commands below
+load a local checkout and support only the validated baselines:
 
-Isolated probes have verified the pre-execution hooks in OpenCode 1.18.18 and Pi 0.84.1. No safe,
-host-neutral model-judge transport was found, so v1 blocks ambiguous actions instead of invoking a
-model.
+- OpenCode 1.18.18;
+- Pi 0.84.1;
+- Node 24.9.0 for the test suite.
 
-## Current behavior
+## Decision flow
 
 ```text
 action
@@ -25,92 +25,203 @@ action
    └─ ambiguous -> block
 ```
 
-The shared policy will fail closed. Unknown actions, missing evidence, parser failures, and
-internal errors must not grant permission. Any future judge timeout or invalid response must also
-block, and a judge must never override a deterministic denial.
+A narrow read-only allowance requires an exact absolute executable path present in the global
+trusted-path list. Bare names, shell builtins, unsupported syntax, missing evidence, malformed
+configuration, and internal errors fail closed. Native host permissions still apply after an
+Auto Mode Gate allowance.
 
-## Implemented core
+## Install from a checkout
 
-- Host-neutral TypeScript types and structured denial codes.
-- Conservative analysis of one simple Bash, PowerShell, or CMD command.
-- An exact absolute executable path, matching identity, and explicit global trusted-path entry
-  required before any narrow read-only allowance; bare names, shell builtins, and unconfigured
-  paths remain ambiguous.
-- Deterministic precedence: invalid or unknown input, explicit denials, missing evidence,
-  ambiguity, then narrow read-only allowances.
-- Fail-closed conversion of `ambiguous` to `deny`.
-- In-memory repeated-rejection counts without persistent identifiers.
-- Sanitized log records that exclude commands, arguments, context, and secrets.
-- `off`, `shadow`, and `enforce` decisions with project configuration allowed to tighten global
-  mode and remove, but never add, trusted executable paths.
-- One shared conformance corpus and unit tests.
+Review the checkout before loading it. Host plugins and extensions run with the user's system
+permissions.
 
-## Implemented adapters
+The commands below were tested with Windows PowerShell 5.1 in isolated profiles. Set `$scope` to
+`project` or `global`, run the command from the repository root, then restart the host. They create
+one UTF-8 loader file and do not edit host settings. Keep the checkout at the same path while the
+loader is installed.
 
-- `src/opencode.ts` registers `tool.execute.before` and throws a sanitized error when enforcement
-  blocks.
-- `src/pi.ts` registers `tool_call` and returns `{ block: true }` when enforcement blocks.
-- Both adapters ignore non-Bash tools, require an explicitly configured shell, block ambiguous Bash
-  calls without confirmation, and accept logical global/project configuration through source-level
-  factories.
-- A safe command must already name the exact trusted absolute executable path. The adapters do not
-  resolve `PATH` or rewrite bare names because the pinned hooks do not guarantee executable identity.
-- The shared corpus runs against the core and both adapter runtimes. Host doubles verify that a
-  denial stops the stub effect before execution.
+### OpenCode
 
-Adapters are independent: loading one does not load the other. A child host process must load its
-own adapter; neither host provides verified child identity through these hooks.
+```powershell
+$scope = "project"
+$source = [System.Uri]::new((Resolve-Path .\src\opencode-runtime.ts).Path).AbsoluteUri
+$pluginRoot = if ($scope -eq "project") {
+  Join-Path (Get-Location) ".opencode\plugins"
+} elseif ($env:OPENCODE_CONFIG_DIR) {
+  Join-Path $env:OPENCODE_CONFIG_DIR "plugins"
+} else {
+  Join-Path $HOME ".config\opencode\plugins"
+}
+New-Item -ItemType Directory -Force $pluginRoot | Out-Null
+"export { AutoModeGatePlugin } from `"$source`";" |
+  Set-Content -Encoding utf8 (Join-Path $pluginRoot "auto-mode-gate.ts")
+```
 
-## Host parity
+OpenCode loads project plugins from `.opencode/plugins/` and global plugins from its configuration
+plugin directory. Verify discovery with:
 
-Parity means the same evidence produces the same policy verdict. Host interaction may differ.
+```powershell
+opencode debug config
+```
 
-- Pi 0.84.1 exposes a blocking `tool_call` event and can request confirmation through its UI.
-- OpenCode 1.18.18 exposes `tool.execute.before`, but no synchronous generic confirmation dialog
-  was verified for that baseline. Any future `ask` verdict must block on OpenCode.
+The resolved `plugin` list must contain `auto-mode-gate.ts`.
 
-Pi confirmation remains a tested host capability, not a v1 policy path. V1 blocks ambiguous
-actions on both hosts to preserve semantic parity.
+### Pi
 
-See [`docs/compatibility.md`](docs/compatibility.md) for the evidence baseline and limitations.
+```powershell
+$scope = "project"
+$source = [System.Uri]::new((Resolve-Path .\src\pi-runtime.ts).Path).AbsoluteUri
+$extensionRoot = if ($scope -eq "project") {
+  Join-Path (Get-Location) ".pi\extensions\auto-mode-gate"
+} elseif ($env:PI_CODING_AGENT_DIR) {
+  Join-Path $env:PI_CODING_AGENT_DIR "extensions\auto-mode-gate"
+} else {
+  Join-Path $HOME ".pi\agent\extensions\auto-mode-gate"
+}
+New-Item -ItemType Directory -Force $extensionRoot | Out-Null
+"export { default } from `"$source`";" |
+  Set-Content -Encoding utf8 (Join-Path $extensionRoot "index.ts")
+```
 
-## Architecture
+Pi loads project extensions only after the project is trusted. A startup-only check that does not
+contact model providers is:
 
-The policy core is independent from both hosts and imports only Node standard-library modules.
-The adapters normalize Bash calls, verify exact configured executable paths, merge logical
-global/project configuration, and enforce the returned decision. Configuration-file discovery
-remains deferred.
-See [`docs/architecture.md`](docs/architecture.md).
+```powershell
+pi --offline --list-models
+```
+
+Pi 0.84.1 does not list auto-discovered extension files in `pi list`; that command lists installed
+packages from settings.
+
+## Configure
+
+Auto Mode Gate reads one global file and, when present, `.auto-mode-gate.json` from the project
+root. It reads configuration when each host adapter starts; restart or reload the host after a
+change.
+
+Global path resolution:
+
+1. `$XDG_CONFIG_HOME/auto-mode-gate/config.json` when `XDG_CONFIG_HOME` is set;
+2. `%APPDATA%\auto-mode-gate\config.json` on Windows;
+3. `~/.config/auto-mode-gate/config.json` elsewhere.
+
+Configured roots and every file path must be absolute for the current operating system. Relative
+`XDG_CONFIG_HOME` or `APPDATA` values fail closed.
+
+Example global configuration:
+
+```json
+{
+  "mode": "enforce",
+  "shell": "powershell",
+  "trustedExecutablePaths": [
+    "C:\\Windows\\System32\\where.exe"
+  ],
+  "logPath": "C:\\Users\\example\\logs\\auto-mode-gate.jsonl"
+}
+```
+
+Create the log directory before starting the host. The supported global keys are:
+
+| Key | Values | Meaning |
+|-|-|-|
+| `mode` | `off`, `shadow`, `enforce` | Defaults to `enforce` |
+| `shell` | `bash`, `powershell`, `cmd` | Required before a Bash tool call can be allowed |
+| `trustedExecutablePaths` | Absolute path array | Exact global authority for narrow read-only allowances |
+| `logPath` | Absolute file path | Optional sanitized JSONL decision log |
+
+Project configuration accepts only `mode` and `trustedExecutablePaths`:
+
+```json
+{
+  "mode": "enforce",
+  "trustedExecutablePaths": [
+    "C:\\Windows\\System32\\where.exe"
+  ]
+}
+```
+
+Project configuration may tighten `shadow` to `enforce` and remove trusted paths. It cannot enable
+a globally `off` gate, relax `enforce`, set the shell, add trust absent from the global file, or set
+a log path. Unknown keys, invalid JSON, relative paths, and unreadable files fail closed.
+
+Modes behave as follows:
+
+- `enforce`: denied actions block;
+- `shadow`: policy and logs run, but actions do not block;
+- `off`: the adapter remains loaded but does not block.
+
+`shadow` is an observation mode, not a security control.
+
+## Logs
+
+Each JSONL record contains only:
+
+- host, tool, and shell enums;
+- policy verdict, final effect, and stable decision code;
+- deterministic source, mode, and blocked state;
+- an in-memory repeated-rejection count.
+
+Logs exclude commands, arguments, prompts, context, secrets, session IDs, call IDs, and persistent
+identifiers. If an `enforce` decision cannot be written to the configured log file, the tool call
+blocks with `AMG_DENY_INTERNAL_ERROR`. Logging is disabled when `logPath` is absent.
+
+## Operation
+
+OpenCode and Pi activate independently through their loader files. Removing one loader leaves the
+other host unchanged. Auto Mode Gate adds no status, enable, disable, or configuration command;
+those controls remain file-based because neither shared host contract requires another command.
+
+Both hosts enforce only calls to their built-in `bash` tool. Other tools remain under native host
+permissions. A child process must load its own adapter. See
+[`docs/compatibility.md`](docs/compatibility.md) for parity and coverage limits.
+
+## Remove
+
+Delete only the loader created during installation, then restart the host.
+
+OpenCode:
+
+```powershell
+Remove-Item <plugin-root>\auto-mode-gate.ts
+```
+
+Pi:
+
+```powershell
+Remove-Item -Recurse <extension-root>\auto-mode-gate
+```
+
+These commands do not edit host settings or remove `.auto-mode-gate.json`, the global Auto Mode
+Gate configuration, logs, or the source checkout. Remove those separately only when they are no
+longer needed.
 
 ## Development
 
-The repository has no installed dependencies. The tests currently run on Node 24.9.0; no broader
-runtime compatibility is claimed. Run the core and adapter conformance tests with:
+The repository has no installed dependencies. Run unit, runtime, integration, and shared
+conformance tests with:
 
 ```text
 npm test
 ```
 
+The strict TypeScript check and clean-profile commands used for the validated baseline are recorded
+in the private project evidence. No broader Node or host compatibility is claimed.
+
 ## Upstream and license
 
 The design study uses OpenCode Swarm at commit
 [`50033bc1e0a0d943433701042fed90b2a791f7fe`](https://github.com/ZaxbyHub/opencode-swarm/commit/50033bc1e0a0d943433701042fed90b2a791f7fe)
-as a reference. OpenCode Swarm is MIT licensed. This is a new standalone repository, not a full
-fork, and excludes Swarm's orchestration system.
+as a reference. OpenCode Swarm is MIT licensed. This repository is an independent implementation
+and excludes Swarm's orchestration system.
 
 See [`docs/upstream.md`](docs/upstream.md), [`NOTICE`](NOTICE), and [`LICENSE`](LICENSE).
 
-## Installation, configuration, commands, and removal
-
-Not available. Source-level adapter factories are not an installation contract. Package names,
-configuration locations, install/remove commands, and compatibility claims remain deferred until
-clean-profile tests exist.
-
 ## Participation
 
-Intended mode: open-source maintained under MIT. This local repository has no public remote,
-issue tracker, contribution channel, or security contact yet. Those policies must be added before
-publication. Pull requests are not accepted during the pre-publication phase.
+Intended mode: open-source maintained under MIT. This local repository has no public remote, issue
+tracker, contribution channel, or security contact. Pull requests are not accepted during the
+pre-publication phase.
 
-Auto Mode Gate is an independent project and is not affiliated with Anthropic, OpenCode, Pi, or
-OpenCode Swarm.
+Auto Mode Gate is independent and is not affiliated with Anthropic, OpenCode, Pi, or OpenCode
+Swarm.

@@ -11,6 +11,7 @@ import {
 import type {
   GateConfig,
   OpenCodeToolBeforeInput,
+  PiExtensionContext,
   PiToolCallBlock,
   PiToolCallEvent,
 } from "../src/index.ts";
@@ -230,7 +231,9 @@ function piEvent(toolName: string, input: unknown): PiToolCallEvent {
 }
 
 function registerPiHandler(extension: ReturnType<typeof createPiExtension>) {
-  let handler: ((event: PiToolCallEvent, context: unknown) => PiToolCallBlock | undefined) | undefined;
+  let handler:
+    | ((event: PiToolCallEvent, context: PiExtensionContext) => PiToolCallBlock | undefined)
+    | undefined;
   extension({
     on(event, registeredHandler) {
       assert.equal(event, "tool_call");

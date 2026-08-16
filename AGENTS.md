@@ -6,9 +6,9 @@ and commits must be written in English.
 
 ## Status and scope
 
-The repository contains the host-neutral permission core, source-level OpenCode and Pi adapters,
-and their tests. Packaging, installation, configuration discovery, and distribution are not
-implemented.
+The repository contains the host-neutral permission core, OpenCode and Pi runtime adapters, strict
+file-based configuration, source-install documentation, and tests. Version 0.1.0 is prepared but
+no tag, release, or publication exists.
 
 The product uses the shared core through separate OpenCode and Pi adapters. It must not contain
 Swarm orchestration, private planning, local profiles, prompts, objectives, credentials, sessions,

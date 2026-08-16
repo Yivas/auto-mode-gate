@@ -49,7 +49,8 @@ Every result other than `allow` has a stable denial code. `ambiguous` uses
 The rejection tracker hashes an equivalence key and keeps at most 1,024 counts in memory. The hash
 is not returned or written to the log. Log records contain only normalized enums, the stable code,
 mode, block result, and rejection count. They exclude commands, arguments, context, prompts, secrets,
-and identifiers.
+and identifiers. When the global file sets an absolute `logPath`, the adapter appends these records
+as JSONL. A write failure becomes a sanitized internal error; it blocks in `enforce` mode.
 
 ## Configuration and modes
 
@@ -59,10 +60,17 @@ The logical core configuration supports `off`, `shadow`, and `enforce`:
 - `shadow` records what enforcement would decide and is not a security control;
 - `enforce` reports denied actions as blocked.
 
-Global configuration also owns the exact absolute paths eligible for narrow read-only allowances.
-Project configuration may remove trusted paths but cannot add one absent from the global list. It
-may tighten `shadow` to `enforce`, cannot activate a globally disabled gate, and cannot relax
-`enforce`. Invalid modes fall back to `enforce`; invalid trusted-path lists become empty.
+`src/config.ts` discovers a global `auto-mode-gate/config.json` through `XDG_CONFIG_HOME`, Windows
+`APPDATA`, or `~/.config`, then reads `.auto-mode-gate.json` from the project root. The global file
+owns the shell, mode, exact trusted executable paths, and optional log path. Project configuration
+may remove trusted paths and tighten `shadow` to `enforce`; it cannot set the shell or log path, add
+trust absent from the global file, activate a globally disabled gate, or relax `enforce`.
+
+Both files use strict JSON keys and paths that are absolute for the current operating system.
+Relative configuration roots, cross-platform path forms, malformed JSON, unreadable files, and
+unknown keys fail closed. Missing global configuration defaults to `enforce` without shell evidence
+or trusted paths. Runtime adapters load the files when they start, so changes require a host restart
+or reload.
 
 ## Adapters
 
@@ -75,15 +83,18 @@ the executable the operating system will open.
 
 `src/opencode.ts` implements the OpenCode `tool.execute.before` contract fixed in
 [`compatibility.md`](compatibility.md). It handles the `bash` tool and throws a sanitized denial when
-`decision.blocked` is true. Other tools remain under native OpenCode permissions.
+`decision.blocked` is true. `src/opencode-runtime.ts` supplies the loader-facing plugin and binds the
+project directory to file discovery. Other tools remain under native OpenCode permissions.
 
 `src/pi.ts` implements Pi's `tool_call` contract. It handles the built-in `bash` tool and returns
-`{ block: true, reason }` when enforcement blocks. Pi's `ctx.ui.confirm` remains unused in v1;
-ambiguous calls block even when UI exists.
+`{ block: true, reason }` when enforcement blocks. `src/pi-runtime.ts` resolves configuration from
+the event context and caches one adapter per project directory. Pi's `ctx.ui.confirm` remains
+unused in v1; ambiguous calls block even when UI exists.
 
-The adapters expose source-level factories that accept logical global and project configuration.
-They do not discover files or modify host settings. `off` and `shadow` preserve the core's
-non-blocking behavior; project configuration cannot relax global policy or add trusted paths.
+The adapters retain source-level factories for tests and embedding. The runtime entries add strict
+file discovery without modifying host settings. OpenCode and Pi activate independently through
+small loader files. `off` and `shadow` preserve the core's non-blocking behavior; project
+configuration cannot relax global policy or add trusted paths.
 
 Each host process must load its adapter. The hooks do not provide verified child-process identity
 or guarantee that a separately launched child loaded the gate. The adapters do not infer session
