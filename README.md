@@ -227,9 +227,14 @@ permissions. A child process must load its own adapter. See
 
 ## Remove
 
-For an npm installation, remove `auto-mode-gate@0.1.0` from OpenCode's `plugin` list. OpenCode
-1.18.18 has no plugin removal subcommand. Remove the Pi package with the same scope used to install
-it:
+OpenCode 1.18.18 has no plugin removal subcommand. For an npm installation:
+
+1. Run `opencode debug config`.
+2. Find the `auto-mode-gate` item in `plugin_origins` and note its `source` directory.
+3. Open `opencode.json` in that directory and remove only the matching item from `plugin`.
+4. Restart OpenCode and confirm that `opencode debug config` no longer lists it.
+
+Remove the Pi package with the same scope used to install it:
 
 ```text
 pi remove npm:auto-mode-gate

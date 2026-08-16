@@ -20,6 +20,18 @@ const trustedRead =
 const trustedGit =
   process.platform === "win32" ? "C:\\trusted\\git.exe" : "/trusted/bin/git";
 
+test("package manifest exposes the OpenCode and Pi runtime entries", async () => {
+  const manifest = JSON.parse(
+    await readFile(new URL("../package.json", import.meta.url), "utf8"),
+  ) as {
+    readonly exports: Readonly<Record<string, string>>;
+    readonly pi: { readonly extensions: readonly string[] };
+  };
+
+  assert.equal(manifest.exports["./server"], "./src/opencode-runtime.ts");
+  assert.deepEqual(manifest.pi.extensions, ["./src/pi-runtime.ts"]);
+});
+
 test("configured OpenCode and Pi runtimes honor host activation, modes, and precedence", async (t) => {
   const root = await mkdtemp(join(tmpdir(), "auto-mode-gate-runtime-"));
   const xdgConfigHome = join(root, "xdg");

@@ -17,6 +17,7 @@
   },
   "exports": {
     ".": "./src/opencode-runtime.ts",
+    "./server": "./src/opencode-runtime.ts",
     "./pi": "./src/pi-runtime.ts"
   },
   "files": [
