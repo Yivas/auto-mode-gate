@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { parseShellCommand } from "./shell.ts";
+import { normalizeExecutableName, parseShellCommand } from "./shell.ts";
 import type {
   DecisionCode,
   GateConfig,
@@ -327,7 +327,7 @@ function classify(input: unknown, trustedExecutablePaths: ReadonlySet<string>): 
   }
 
   const executableToken = parsed.tokens[0];
-  const executable = normalizeExecutable(executableToken);
+  const executable = normalizeExecutableName(executableToken);
   if (!executable) {
     return ambiguous(action);
   }
@@ -457,7 +457,7 @@ function hasVerifiedExecutable(
     identity.path === executableToken &&
     trustedExecutablePaths.has(identity.path) &&
     isAbsolutePath(identity.path) &&
-    normalizeExecutable(identity.name) === executable
+    normalizeExecutableName(identity.name) === executable
   );
 }
 
@@ -468,11 +468,6 @@ function isDangerousGitOption(token: string): boolean {
     option === "--output" ||
     option.startsWith("--output=")
   );
-}
-
-function normalizeExecutable(executable: string): string {
-  const name = executable.split(/[\\/]/u).at(-1) ?? "";
-  return name.toLowerCase().replace(/\.(?:bat|cmd|com|exe)$/u, "");
 }
 
 function isAbsolutePath(path: string): boolean {

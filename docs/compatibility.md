@@ -28,10 +28,20 @@ Pi:
 - [Official extension lifecycle documentation at `v0.84.2`](https://github.com/earendil-works/pi/blob/v0.84.2/packages/coding-agent/docs/extensions.md)
 - [Official permission-gate example at `v0.84.2`](https://github.com/earendil-works/pi/blob/v0.84.2/packages/coding-agent/examples/extensions/permission-gate.ts)
 
+## Adapter verification
+
+The source-level adapter suite replays the shared policy corpus for both hosts. Host doubles assert
+that OpenCode throws and Pi returns a blocking result before a stub effect, that allowed Bash calls
+already contain the exact trusted path evaluated by the core, and that `shadow`, `off`, and project
+configuration keep the core's restrictions.
+
+These tests exercise the pinned hook shapes without starting either host. The executed baselines in
+the table remain evidence for hook ordering; AMG3 did not modify or start active installations.
+
 ## Semantic parity
 
-Both adapters must use the same policy fixtures and reason codes. A host with fewer capabilities
-must never grant broader permission.
+Both adapters use the same policy fixtures and reason codes. A host with fewer capabilities must
+never grant broader permission.
 
 Pi confirmation is a tested adapter capability, but v1 does not expose it for ambiguous actions.
 Both adapters block ambiguity while the permission judge is deferred.
@@ -41,10 +51,17 @@ Both adapters block ambiguity while the permission judge is deferred.
 - Passing the gate does not bypass or replace native host permissions.
 - Agent and subagent identity is used only when the host provides verifiable evidence.
 - Pi does not provide native subagent identity; child processes must load their own adapter.
+- OpenCode sessions covered by the loaded plugin use the same hook, but a separately launched host
+  process must load the plugin itself.
 - OpenCode's researched pre-tool hook does not include agent identity or an abort signal.
 - Pi 0.84.1 exposes a host-native model call; no equivalent isolated API was verified in OpenCode 1.18.18.
 - No common permission-judge transport is enabled in v1.
 - Coverage is limited to execution paths proven to pass through the documented hooks.
+- Adapter factories accept logical configuration objects; file discovery, installation, removal,
+  and active-host clean-profile tests remain deferred.
+- The adapters require explicit shell evidence and do not rewrite bare executable names.
+- A trusted path is configuration authority, not an immutable file handle; replacing a trusted file
+  between policy evaluation and execution remains outside the hook contract.
 
 ## Before claiming support
 

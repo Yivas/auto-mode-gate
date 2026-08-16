@@ -6,8 +6,9 @@ and commits must be written in English.
 
 ## Status and scope
 
-The repository contains the host-neutral AMG2 permission core and its tests. OpenCode and Pi
-adapters, packaging, installation, and distribution are not implemented.
+The repository contains the host-neutral permission core, source-level OpenCode and Pi adapters,
+and their tests. Packaging, installation, configuration discovery, and distribution are not
+implemented.
 
 The product uses the shared core through separate OpenCode and Pi adapters. It must not contain
 Swarm orchestration, private planning, local profiles, prompts, objectives, credentials, sessions,

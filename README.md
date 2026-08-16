@@ -5,10 +5,11 @@ to provide Claude Code Auto Mode-style decisions without depending on the rest o
 
 ## Status
 
-The host-neutral AMG2 core is implemented and tested. It classifies simple Bash, PowerShell, and
-CMD commands without executing them, blocks unknown or ambiguous input, tracks equivalent
-rejections in memory, and returns sanitized log records. The repository still has no host adapter,
-installable package, command, or supported configuration.
+The host-neutral core and source-level OpenCode and Pi adapters are implemented and tested. The
+core classifies simple Bash, PowerShell, and CMD commands without executing them, blocks unknown
+or ambiguous input, tracks equivalent rejections in memory, and returns sanitized log records. The
+repository still has no installable package, command, configuration file discovery, or supported
+host release.
 
 Isolated probes have verified the pre-execution hooks in OpenCode 1.18.18 and Pi 0.84.1. No safe,
 host-neutral model-judge transport was found, so v1 blocks ambiguous actions instead of invoking a
@@ -44,7 +45,21 @@ block, and a judge must never override a deterministic denial.
   mode and remove, but never add, trusted executable paths.
 - One shared conformance corpus and unit tests.
 
-Host adapters, installation, and distribution remain planned.
+## Implemented adapters
+
+- `src/opencode.ts` registers `tool.execute.before` and throws a sanitized error when enforcement
+  blocks.
+- `src/pi.ts` registers `tool_call` and returns `{ block: true }` when enforcement blocks.
+- Both adapters ignore non-Bash tools, require an explicitly configured shell, block ambiguous Bash
+  calls without confirmation, and accept logical global/project configuration through source-level
+  factories.
+- A safe command must already name the exact trusted absolute executable path. The adapters do not
+  resolve `PATH` or rewrite bare names because the pinned hooks do not guarantee executable identity.
+- The shared corpus runs against the core and both adapter runtimes. Host doubles verify that a
+  denial stops the stub effect before execution.
+
+Adapters are independent: loading one does not load the other. A child host process must load its
+own adapter; neither host provides verified child identity through these hooks.
 
 ## Host parity
 
@@ -62,13 +77,15 @@ See [`docs/compatibility.md`](docs/compatibility.md) for the evidence baseline a
 ## Architecture
 
 The policy core is independent from both hosts and imports only Node standard-library modules.
-Future adapters will load configuration, normalize host calls, provide verified context, and
-enforce the returned decision. See [`docs/architecture.md`](docs/architecture.md).
+The adapters normalize Bash calls, verify exact configured executable paths, merge logical
+global/project configuration, and enforce the returned decision. Configuration-file discovery
+remains deferred.
+See [`docs/architecture.md`](docs/architecture.md).
 
 ## Development
 
 The repository has no installed dependencies. The tests currently run on Node 24.9.0; no broader
-runtime compatibility is claimed. Run the conformance corpus and unit tests with:
+runtime compatibility is claimed. Run the core and adapter conformance tests with:
 
 ```text
 npm test
@@ -85,9 +102,9 @@ See [`docs/upstream.md`](docs/upstream.md), [`NOTICE`](NOTICE), and [`LICENSE`](
 
 ## Installation, configuration, commands, and removal
 
-Not available. These sections will be written only after the implementation and clean-profile
-tests exist. The documentation will not invent package names, file locations, commands, or
-compatibility claims.
+Not available. Source-level adapter factories are not an installation contract. Package names,
+configuration locations, install/remove commands, and compatibility claims remain deferred until
+clean-profile tests exist.
 
 ## Participation
 

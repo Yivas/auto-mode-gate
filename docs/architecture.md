@@ -1,6 +1,6 @@
 # Architecture
 
-This document defines the implemented core and the planned adapter boundaries.
+This document defines the implemented core and adapter boundaries.
 
 ## Decision flow
 
@@ -66,17 +66,32 @@ may tighten `shadow` to `enforce`, cannot activate a globally disabled gate, and
 
 ## Adapters
 
-Adapters remain planned. They will load host-specific configuration, collect only verified context,
-resolve command identity without trusting aliases or shell functions, require a path explicitly
-trusted by global configuration, replace the executable token with that exact absolute path,
-normalize the tool call, invoke the core, and enforce the same bound invocation. They will not
-contain duplicate risk policy.
+`src/adapter.ts` contains the shared host boundary. It merges logical global/project configuration,
+requires an explicitly configured shell, and invokes the core. An executable is trusted only when
+the command already starts with the exact configured absolute path. Bare names, relative paths,
+unsupported or missing shells, and malformed input fail closed. The adapters do not resolve `PATH`
+or rewrite commands because the pinned hooks do not guarantee that a rewritten string identifies
+the executable the operating system will open.
 
-The OpenCode adapter is planned around `tool.execute.before`. The Pi adapter is planned around
-`tool_call`. Pi's `ctx.ui.confirm` remains a tested capability for a future policy path.
+`src/opencode.ts` implements the OpenCode `tool.execute.before` contract fixed in
+[`compatibility.md`](compatibility.md). It handles the `bash` tool and throws a sanitized denial when
+`decision.blocked` is true. Other tools remain under native OpenCode permissions.
 
-An adapter must declare missing capabilities. It must never invent agent identity, session
-ancestry, arguments, objectives, or recent actions.
+`src/pi.ts` implements Pi's `tool_call` contract. It handles the built-in `bash` tool and returns
+`{ block: true, reason }` when enforcement blocks. Pi's `ctx.ui.confirm` remains unused in v1;
+ambiguous calls block even when UI exists.
+
+The adapters expose source-level factories that accept logical global and project configuration.
+They do not discover files or modify host settings. `off` and `shadow` preserve the core's
+non-blocking behavior; project configuration cannot relax global policy or add trusted paths.
+
+Each host process must load its adapter. The hooks do not provide verified child-process identity
+or guarantee that a separately launched child loaded the gate. The adapters do not infer session
+ancestry, agent identity, arguments, objectives, or recent actions.
+
+Trusted paths are configuration authority, not immutable file identity. Users must control each
+trusted file and its ancestor directories. The hooks cannot hold an executable handle across the
+decision and execution, so replacement of a trusted file remains outside this gate's guarantees.
 
 ## Deferred permission judge
 

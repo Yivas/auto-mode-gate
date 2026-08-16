@@ -76,6 +76,11 @@ const shellRules = {
   },
 } as const;
 
+export function normalizeExecutableName(executable: string): string {
+  const name = executable.split(/[\\/]/u).at(-1) ?? "";
+  return name.toLowerCase().replace(/\.(?:bat|cmd|com|exe)$/u, "");
+}
+
 export function parseShellCommand(shell: Shell, command: string): ParsedCommand {
   const rules = shellRules[shell];
   const tokens: string[] = [];

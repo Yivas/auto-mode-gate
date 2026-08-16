@@ -1,0 +1,130 @@
+import { AutoModeGate, mergeConfig } from "./core.ts";
+import { normalizeExecutableName } from "./shell.ts";
+import type {
+  GateConfig,
+  GateDecision,
+  KnownHost,
+  Shell,
+  VerifiedExecutable,
+} from "./types.ts";
+
+export interface AdapterOptions {
+  readonly shell?: Shell;
+  readonly globalConfig?: GateConfig;
+  readonly projectConfig?: Partial<GateConfig>;
+}
+
+export interface AdapterShellCall {
+  readonly command: unknown;
+  readonly shell?: unknown;
+  readonly truncated?: unknown;
+}
+
+export interface AdapterEvaluation {
+  readonly decision: GateDecision;
+  readonly command: unknown;
+}
+
+export interface ShellAdapter {
+  evaluate(call: AdapterShellCall): AdapterEvaluation;
+}
+
+export function createShellAdapter(host: KnownHost, options: AdapterOptions = {}): ShellAdapter {
+  try {
+    const config = mergeConfig(options.globalConfig ?? { mode: "enforce" }, options.projectConfig);
+    const gate = new AutoModeGate(config);
+    const configuredShell = options.shell;
+    const trustedPaths = config.trustedExecutablePaths ?? [];
+
+    return Object.freeze({
+      evaluate(call: AdapterShellCall): AdapterEvaluation {
+        try {
+          const shell = call.shell ?? configuredShell;
+          const binding = bindExecutable(call.command, shell, trustedPaths);
+          const command = binding?.command ?? call.command;
+          const decision = gate.evaluate({
+            kind: "shell",
+            tool: "shell",
+            shell,
+            command,
+            executable: binding?.executable,
+            truncated: call.truncated,
+            host,
+          });
+          return Object.freeze({ decision, command });
+        } catch {
+          return internalError(gate);
+        }
+      },
+    });
+  } catch {
+    const gate = new AutoModeGate({ mode: "enforce" });
+    return Object.freeze({ evaluate: () => internalError(gate) });
+  }
+}
+
+export function denialReason(decision: GateDecision): string {
+  return `${decision.code}: ${decision.denial?.message ?? "The action could not be evaluated safely."}`;
+}
+
+function bindExecutable(
+  command: unknown,
+  shell: unknown,
+  trustedPaths: readonly string[],
+): { readonly command: string; readonly executable: VerifiedExecutable } | undefined {
+  if (typeof command !== "string" || !isShell(shell)) {
+    return undefined;
+  }
+
+  const head = readCommandHead(command, shell);
+  if (!head) {
+    return undefined;
+  }
+
+  if (!isAbsolutePath(head.token) || !trustedPaths.includes(head.token)) {
+    return undefined;
+  }
+
+  return {
+    command,
+    executable: Object.freeze({
+      name: normalizeExecutableName(head.token),
+      path: head.token,
+      source: "trusted-path",
+    }),
+  };
+}
+
+function readCommandHead(command: string, shell: Shell): { readonly token: string } | undefined {
+  const start = command.search(/\S/u);
+  if (start < 0) {
+    return undefined;
+  }
+
+  const quote = command[start];
+  const quotes = shell === "cmd" ? ['"'] : ["'", '"'];
+  if (quotes.includes(quote)) {
+    const endQuote = command.indexOf(quote, start + 1);
+    if (endQuote < 0 || (command[endQuote + 1] !== undefined && !/\s/u.test(command[endQuote + 1]))) {
+      return undefined;
+    }
+    return { token: command.slice(start + 1, endQuote) };
+  }
+
+  const relativeEnd = command.slice(start).search(/\s/u);
+  const end = relativeEnd < 0 ? command.length : start + relativeEnd;
+  return { token: command.slice(start, end) };
+}
+
+function internalError(gate: AutoModeGate): AdapterEvaluation {
+  const unreadable = new Proxy({}, { get: () => { throw new Error("unreadable adapter input"); } });
+  return Object.freeze({ decision: gate.evaluate(unreadable), command: undefined });
+}
+
+function isAbsolutePath(path: string): boolean {
+  return path.startsWith("/") || /^[a-z]:[\\/]/iu.test(path) || path.startsWith("\\\\");
+}
+
+function isShell(value: unknown): value is Shell {
+  return value === "bash" || value === "powershell" || value === "cmd";
+}
