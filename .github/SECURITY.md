@@ -18,5 +18,7 @@ observed behavior. Remove credentials, prompts, commands, logs, paths, and other
 submitting evidence.
 
 Auto Mode Gate is a pre-tool policy gate, not an operating-system sandbox. Review the documented
-limits in [`docs/compatibility.md`](../docs/compatibility.md) before reporting behavior that falls
-outside the supported hook paths or host baselines.
+limits in [`docs/compatibility.md`][compatibility] before reporting behavior that falls outside the
+supported hook paths or host baselines.
+
+[compatibility]: https://github.com/Yivas/auto-mode-gate/blob/main/docs/compatibility.md
