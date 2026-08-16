@@ -2,11 +2,14 @@
 
 ## Supported versions
 
-Only the latest published version receives security fixes.
+Only the latest published version receives security fixes. Security support covers both runtime
+adapters at their validated host baselines.
 
-| Version | Supported |
+| Component | Supported baseline |
 |-|-|
-| 0.1.x | Yes |
+| Auto Mode Gate | 0.1.x |
+| OpenCode adapter | OpenCode 1.18.18 |
+| Pi adapter | Pi 0.84.1 |
 
 ## Report a vulnerability
 

@@ -275,7 +275,8 @@ See [`docs/upstream.md`](docs/upstream.md), [`NOTICE`](NOTICE), and [`LICENSE`](
 
 ## Participation
 
-Auto Mode Gate is maintained under MIT. Report reproducible bugs through
+Auto Mode Gate is maintained under MIT. Read the [contribution policy](CONTRIBUTING.md) and
+[Code of Conduct](CODE_OF_CONDUCT.md) before participating. Report reproducible bugs through
 [GitHub Issues](https://github.com/Yivas/auto-mode-gate/issues). Report vulnerabilities through
 [GitHub private vulnerability reporting](https://github.com/Yivas/auto-mode-gate/security/advisories/new).
 Pull requests are not currently accepted.
