@@ -11,9 +11,10 @@ file-based configuration, npm and source-install documentation, and tests. Versi
 first public release on GitHub and npm.
 
 The product uses the shared core through separate OpenCode and Pi adapters. It must not contain
-multi-agent orchestration, private planning, local profiles, prompts, objectives, credentials,
-sessions, real logs, or operational configuration values. Generic schemas, sanitized log formats,
-documentation, and fictional examples are allowed.
+multi-agent orchestration, private planning, local profiles, operational prompts, objectives,
+credentials, sessions, real logs, or operational configuration values. Generic schemas, sanitized
+log formats, documentation, fictional examples, and the versioned static permission-judge
+instruction defined by the public protocol are allowed.
 
 ## Rules
 
@@ -28,6 +29,8 @@ documentation, and fictional examples are allowed.
 - Do not infer agent or subagent identity when the host does not provide it.
 - Do not add telemetry, analytics, phone-home behavior, secrets, real endpoints, or correlatable
   identifiers.
+- Keep the permission-judge instruction static, versioned, minimal, and free of user or project
+  content. Do not add any other model prompt.
 - Do not modify user installations or global OpenCode/Pi configuration during tests. Use isolated
   temporary profiles after explicit approval.
 - Run the repository's formatter, type checker, tests, package inspection, and code review after

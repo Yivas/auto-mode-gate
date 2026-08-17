@@ -12,13 +12,35 @@ export type PermissionAssessmentState =
   | "unresolved-ineligible"
   | "unresolved-eligible";
 
+export type PermissionJudgeOperation = "diff" | "log" | "show" | "status";
+
+export type PermissionJudgeOptionRisk =
+  | "read-modifier"
+  | "write"
+  | "execute"
+  | "network"
+  | "force"
+  | "recursive"
+  | "credential";
+
+export type PermissionJudgeArgumentKind = "path" | "url" | "number" | "value";
+
 export interface PermissionJudgeRequest {
   readonly protocol: "amg-permission-judge/v1";
 }
 
+export interface PermissionJudgeSanitizedRequest extends PermissionJudgeRequest {
+  readonly shell: Shell;
+  readonly executable: "git";
+  readonly operation: PermissionJudgeOperation;
+  readonly optionRisks: readonly PermissionJudgeOptionRisk[];
+  readonly argumentKinds: readonly PermissionJudgeArgumentKind[];
+  readonly syntax: "simple-literal";
+}
+
 export type JudgeEligibility =
   | { readonly state: "ineligible" }
-  | { readonly state: "eligible"; readonly request: PermissionJudgeRequest };
+  | { readonly state: "eligible"; readonly request: PermissionJudgeSanitizedRequest };
 
 export type PermissionAssessment =
   | { readonly state: "allow-final"; readonly policyVerdict: "allow" }

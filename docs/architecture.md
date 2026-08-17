@@ -114,13 +114,15 @@ decision and execution, so replacement of a trusted file remains outside this ga
 
 ## Deferred permission judge
 
-The core defines inert, host-neutral types for judge requests, responses, outcomes, eligibility,
-source, and stable future codes. It does not construct a request or invoke a model judge. The
-request type fixes only the protocol marker until sanitization defines a closed payload. Isolated
-probes found a Pi-specific model call, but no equivalent safe OpenCode API or host-neutral transport
-was verified.
+The core defines host-neutral judge types and a pure sanitizer boundary. It accepts only simple
+literal Git `diff`, `log`, `show`, or `status` candidates whose exact executable path is configured
+and bound by the adapter. Requests contain closed operation, option-risk, and argument-kind enums;
+they exclude command text, executable paths, values, URLs, secrets, host context, and identifiers.
+A strict validator accepts only the two canonical protocol responses. No adapter invokes a model
+judge yet. Isolated probes found a Pi-specific model call, but no equivalent safe OpenCode API or
+host-neutral transport was verified.
 
-A later phase will add a user-selected model after sanitization and host transport have tests for
+A later phase will add a user-selected model after host transport has tests for
 tool isolation, recursion prevention, authentication, cancellation, timeout, and strict output
 validation. Deterministic allowances and denials skip the model. Only eligible unresolved cases
 receive minimal normalized context, and a judge will never override a deterministic denial.

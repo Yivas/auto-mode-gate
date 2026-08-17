@@ -1,0 +1,175 @@
+[
+  {
+    "name": "redacts paths URLs values and a fictional secret",
+    "action": {
+      "kind": "shell",
+      "tool": "shell",
+      "shell": "bash",
+      "command": "/trusted/bin/git show --quiet /home/fictional/private.txt https://fictional.example.invalid/file 42 fictional-secret-7f3a9c",
+      "executable": { "name": "git", "path": "/trusted/bin/git", "source": "trusted-path" }
+    },
+    "expected": {
+      "protocol": "amg-permission-judge/v1",
+      "shell": "bash",
+      "executable": "git",
+      "operation": "show",
+      "optionRisks": ["read-modifier"],
+      "argumentKinds": ["path", "url", "number", "value"],
+      "syntax": "simple-literal"
+    },
+    "forbidden": [
+      "/trusted/bin",
+      "/home/fictional",
+      "fictional.example.invalid",
+      "fictional-secret-7f3a9c"
+    ]
+  },
+  {
+    "name": "keeps option risks as closed categories",
+    "action": {
+      "kind": "shell",
+      "tool": "shell",
+      "shell": "bash",
+      "command": "/trusted/bin/git diff --force --recursive /home/fictional/private.txt",
+      "executable": { "name": "git", "path": "/trusted/bin/git", "source": "trusted-path" }
+    },
+    "expected": {
+      "protocol": "amg-permission-judge/v1",
+      "shell": "bash",
+      "executable": "git",
+      "operation": "diff",
+      "optionRisks": ["force", "recursive"],
+      "argumentKinds": ["path"],
+      "syntax": "simple-literal"
+    },
+    "forbidden": ["/home/fictional", "--force", "--recursive"]
+  },
+  {
+    "name": "redacts credential option values",
+    "action": {
+      "kind": "shell",
+      "tool": "shell",
+      "shell": "bash",
+      "command": "/trusted/bin/git show --token=fictional-secret-value report.txt",
+      "executable": { "name": "git", "path": "/trusted/bin/git", "source": "trusted-path" }
+    },
+    "expected": {
+      "protocol": "amg-permission-judge/v1",
+      "shell": "bash",
+      "executable": "git",
+      "operation": "show",
+      "optionRisks": ["credential"],
+      "argumentKinds": ["value"],
+      "syntax": "simple-literal"
+    },
+    "forbidden": ["fictional-secret-value", "report.txt", "--token"]
+  },
+  {
+    "name": "rejects unknown operations",
+    "action": {
+      "kind": "shell",
+      "tool": "shell",
+      "shell": "bash",
+      "command": "/trusted/bin/git frobnicate value",
+      "executable": { "name": "git", "path": "/trusted/bin/git", "source": "trusted-path" }
+    },
+    "expected": null,
+    "forbidden": ["frobnicate"]
+  },
+  {
+    "name": "rejects unknown options",
+    "action": {
+      "kind": "shell",
+      "tool": "shell",
+      "shell": "bash",
+      "command": "/trusted/bin/git show --fictional-mode value",
+      "executable": { "name": "git", "path": "/trusted/bin/git", "source": "trusted-path" }
+    },
+    "expected": null,
+    "forbidden": ["fictional-mode"]
+  },
+  {
+    "name": "rejects variable expansion",
+    "action": {
+      "kind": "shell",
+      "tool": "shell",
+      "shell": "bash",
+      "command": "/trusted/bin/git show \"$FICTIONAL_SECRET\"",
+      "executable": { "name": "git", "path": "/trusted/bin/git", "source": "trusted-path" }
+    },
+    "expected": null,
+    "forbidden": ["FICTIONAL_SECRET"]
+  },
+  {
+    "name": "rejects output redirection",
+    "action": {
+      "kind": "shell",
+      "tool": "shell",
+      "shell": "bash",
+      "command": "/trusted/bin/git show input.txt > output.txt",
+      "executable": { "name": "git", "path": "/trusted/bin/git", "source": "trusted-path" }
+    },
+    "expected": null,
+    "forbidden": ["input.txt", "output.txt"]
+  },
+  {
+    "name": "rejects pipelines",
+    "action": {
+      "kind": "shell",
+      "tool": "shell",
+      "shell": "bash",
+      "command": "/trusted/bin/git show input.txt | cat",
+      "executable": { "name": "git", "path": "/trusted/bin/git", "source": "trusted-path" }
+    },
+    "expected": null,
+    "forbidden": ["input.txt"]
+  },
+  {
+    "name": "rejects adjacent quoted fragments",
+    "action": {
+      "kind": "shell",
+      "tool": "shell",
+      "shell": "bash",
+      "command": "/trusted/bin/git \"sh\"\"ow\" value",
+      "executable": { "name": "git", "path": "/trusted/bin/git", "source": "trusted-path" }
+    },
+    "expected": null,
+    "forbidden": ["value"]
+  },
+  {
+    "name": "rejects missing executable identity",
+    "action": {
+      "kind": "shell",
+      "tool": "shell",
+      "shell": "bash",
+      "command": "/trusted/bin/git show value"
+    },
+    "expected": null,
+    "forbidden": ["value"]
+  },
+  {
+    "name": "rejects mismatched executable identity",
+    "action": {
+      "kind": "shell",
+      "tool": "shell",
+      "shell": "bash",
+      "command": "/trusted/bin/git show value",
+      "executable": { "name": "git.exe", "path": "/trusted/bin/git", "source": "trusted-path" }
+    },
+    "expected": null,
+    "forbidden": ["value"]
+  },
+  {
+    "name": "rejects truncated input",
+    "action": {
+      "kind": "shell",
+      "tool": "shell",
+      "shell": "bash",
+      "command": "/trusted/bin/git show value",
+      "truncated": true,
+      "executable": { "name": "git", "path": "/trusted/bin/git", "source": "trusted-path" }
+    },
+    "expected": null,
+    "forbidden": ["value"]
+  }
+]

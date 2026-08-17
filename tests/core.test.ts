@@ -90,7 +90,15 @@ test("the judge contract keeps current decision results unchanged", () => {
       policyVerdict: "ambiguous",
       eligibility: {
         state: "eligible",
-        request: { protocol: "amg-permission-judge/v1" },
+        request: {
+          protocol: "amg-permission-judge/v1",
+          shell: "bash",
+          executable: "git",
+          operation: "show",
+          optionRisks: [],
+          argumentKinds: [],
+          syntax: "simple-literal",
+        },
       },
     },
   ] satisfies readonly PermissionAssessment[];

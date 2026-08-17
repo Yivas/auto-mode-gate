@@ -1,6 +1,11 @@
 export { AutoModeGate, RejectionTracker, mergeConfig } from "./core.ts";
 export { createShellAdapter, denialReason } from "./adapter.ts";
 export { getDefaultGlobalConfigPath, loadAdapterOptions, PROJECT_CONFIG_NAME } from "./config.ts";
+export {
+  PERMISSION_JUDGE_INSTRUCTION_V1,
+  buildPermissionJudgeRequest,
+  validatePermissionJudgeResponse,
+} from "./judge.ts";
 export { AutoModeGateOpenCodePlugin, createOpenCodeHooks, createOpenCodePlugin } from "./opencode.ts";
 export { createPiExtension } from "./pi.ts";
 export type {
@@ -41,12 +46,16 @@ export type {
   PermissionAssessment,
   PermissionAssessmentState,
   PermissionJudge,
+  PermissionJudgeArgumentKind,
   PermissionJudgeDecisionCode,
   PermissionJudgeDecisionSource,
   PermissionJudgeFailure,
+  PermissionJudgeOperation,
+  PermissionJudgeOptionRisk,
   PermissionJudgeOutcome,
   PermissionJudgeRequest,
   PermissionJudgeResponse,
+  PermissionJudgeSanitizedRequest,
   PermissionJudgeVerdict,
   PolicyVerdict,
   Shell,
