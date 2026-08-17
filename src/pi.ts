@@ -1,3 +1,5 @@
+import { performance } from "node:perf_hooks";
+
 import {
   createShellAdapter,
   denialReason,
@@ -5,13 +7,20 @@ import {
   type ShellAdapter,
 } from "./adapter.ts";
 import {
+  PERMISSION_JUDGE_INSTRUCTION_V1,
+  validatePermissionJudgeResponse,
+} from "./judge.ts";
+import {
   PermissionJudgeSession,
   createPermissionJudgeModelReference,
   type PermissionJudgeModelAvailability,
 } from "./session.ts";
 import type {
+  PermissionJudge,
   PermissionJudgeAuthorization,
   PermissionJudgeModelReference,
+  PermissionJudgeOutcome,
+  PermissionJudgeRequest,
   PermissionJudgeSessionStatus,
 } from "./types.ts";
 
@@ -33,6 +42,41 @@ export interface PiModel {
   readonly id: string;
 }
 
+interface PiAssistantMessage {
+  readonly stopReason: string;
+  readonly content: readonly {
+    readonly type: string;
+    readonly text?: string;
+  }[];
+}
+
+interface PiCompletionContext {
+  readonly systemPrompt: string;
+  readonly messages: readonly {
+    readonly role: "user";
+    readonly content: string;
+    readonly timestamp: number;
+  }[];
+  readonly tools: readonly [];
+}
+
+interface PiCompletionOptions {
+  readonly signal: AbortSignal;
+  readonly timeoutMs: number;
+  readonly maxRetries: 0;
+}
+
+type PiComplete = (
+  model: PiModel,
+  context: PiCompletionContext,
+  options?: PiCompletionOptions,
+) => Promise<PiAssistantMessage>;
+
+interface PiModelRegistry {
+  getAvailable(): readonly PiModel[];
+  find(provider: string, id: string): PiModel | undefined;
+}
+
 export interface PiExtensionCommand {
   readonly description?: string;
   readonly handler: (args: string, context: PiExtensionContext) => Promise<void>;
@@ -41,12 +85,10 @@ export interface PiExtensionCommand {
 export interface PiExtensionContext {
   readonly cwd?: string;
   readonly sessionManager?: object;
-  readonly modelRegistry?: {
-    getAvailable(): readonly PiModel[];
-    find(provider: string, id: string): PiModel | undefined;
-  };
+  readonly modelRegistry?: PiModelRegistry;
   readonly scopedModels?: readonly { readonly model: PiModel }[];
   readonly model?: PiModel;
+  readonly signal?: AbortSignal;
   readonly ui?: {
     notify?(message: string, type?: "info" | "warning" | "error"): void;
     confirm?(title: string, message: string): boolean | Promise<boolean>;
@@ -60,7 +102,7 @@ export interface PiExtensionAPI {
     handler: (
       event: PiToolCallEvent,
       context: PiExtensionContext,
-    ) => PiToolCallBlock | undefined,
+    ) => PiToolCallBlock | undefined | Promise<PiToolCallBlock | undefined>,
   ): void;
   registerCommand?(name: string, command: PiExtensionCommand): void;
 }
@@ -84,7 +126,7 @@ export function createPiExtension(
   const resolveProject = createProjectResolver(options);
   const resolveSession = createSessionResolver(resolveProject);
   return (pi) => {
-    registerToolCall(pi, resolveProject);
+    registerToolCall(pi, resolveProject, resolveSession);
     registerJudgeCommand(pi, resolveSession);
   };
 }
@@ -94,15 +136,27 @@ export default createPiExtension();
 function registerToolCall(
   pi: PiExtensionAPI,
   resolveProject: (context: PiExtensionContext) => PiProjectRuntime,
+  resolveSession?: (context: PiExtensionContext) => PiCommandSession | undefined,
 ): void {
-  pi.on("tool_call", (event, context) => {
+  pi.on("tool_call", async (event, context) => {
     try {
       if (event.toolName !== "bash") {
         return undefined;
       }
 
       const input = isRecord(event.input) ? event.input : undefined;
-      const evaluation = resolveProject(context).adapter.evaluate({ command: input?.command });
+      const call = { command: input?.command };
+      const project = resolveProject(context);
+      const commandSession = resolveSession?.(context);
+      const status = commandSession?.session.status(commandSession.isModelAvailable);
+      const timeoutMs = commandSession?.session.timeoutMs();
+      const judge =
+        status?.enabled && status.model && timeoutMs !== undefined
+          ? createPiPermissionJudge(context, status.model, timeoutMs)
+          : undefined;
+      const evaluation = judge && project.adapter.evaluateWithJudge
+        ? await project.adapter.evaluateWithJudge(call, judge, context.signal)
+        : project.adapter.evaluate(call);
       if (evaluation.decision.blocked) {
         return { block: true, reason: denialReason(evaluation.decision) };
       }
@@ -114,6 +168,165 @@ function registerToolCall(
       };
     }
   });
+}
+
+function createPiPermissionJudge(
+  context: PiExtensionContext,
+  modelReference: PermissionJudgeModelReference,
+  timeoutMs: number,
+): PermissionJudge {
+  return Object.freeze({
+    async evaluate(request: PermissionJudgeRequest, signal: AbortSignal) {
+      const registry = context.modelRegistry;
+      const model = resolveAvailableModel(context, modelReference);
+      const complete = readComplete(registry);
+      if (!complete || !model) {
+        return Object.freeze({ status: "unavailable" });
+      }
+      return completeWithDeadline(complete, model, request, timeoutMs, signal);
+    },
+  });
+}
+
+function readComplete(registry: PiModelRegistry | undefined): PiComplete | undefined {
+  const candidate = registry
+    ? (registry as unknown as Record<string, unknown>).complete
+    : undefined;
+  if (typeof candidate !== "function" || !registry) {
+    return undefined;
+  }
+  return async (model, context, options) => {
+    const result = Reflect.apply(candidate, registry, [model, context, options]);
+    return await Promise.resolve(result as PiAssistantMessage);
+  };
+}
+
+function completeWithDeadline(
+  complete: PiComplete,
+  model: PiModel,
+  request: PermissionJudgeRequest,
+  timeoutMs: number,
+  externalSignal: AbortSignal,
+): Promise<PermissionJudgeOutcome> {
+  return new Promise((resolve) => {
+    const controller = new AbortController();
+    let settled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = performance.now() + timeoutMs;
+
+    const finish = (outcome: PermissionJudgeOutcome) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (timer !== undefined) {
+        clearTimeout(timer);
+      }
+      externalSignal.removeEventListener("abort", cancel);
+      resolve(Object.freeze(outcome));
+    };
+    const cancel = () => {
+      finish({ status: "cancelled" });
+      controller.abort();
+    };
+
+    if (externalSignal.aborted) {
+      cancel();
+      return;
+    }
+    externalSignal.addEventListener("abort", cancel, { once: true });
+    timer = setTimeout(() => {
+      finish({ status: "timeout" });
+      controller.abort();
+    }, timeoutMs);
+
+    let completion: Promise<PiAssistantMessage>;
+    try {
+      completion = complete(
+        model,
+        {
+          systemPrompt: PERMISSION_JUDGE_INSTRUCTION_V1,
+          messages: [{
+            role: "user",
+            content: JSON.stringify(request),
+            timestamp: Date.now(),
+          }],
+          tools: [],
+        },
+        {
+          signal: controller.signal,
+          timeoutMs,
+          maxRetries: 0,
+        },
+      );
+    } catch {
+      finish(
+        externalSignal.aborted
+          ? { status: "cancelled" }
+          : performance.now() >= deadline
+            ? { status: "timeout" }
+            : { status: "error" },
+      );
+      return;
+    }
+
+    Promise.resolve(completion).then(
+      (message) => finish(
+        performance.now() >= deadline
+          ? { status: "timeout" }
+          : readCompletion(message),
+      ),
+      () => finish(
+        externalSignal.aborted
+          ? { status: "cancelled" }
+          : performance.now() >= deadline
+            ? { status: "timeout" }
+            : { status: "error" },
+      ),
+    );
+    if (externalSignal.aborted) {
+      cancel();
+    } else if (performance.now() >= deadline) {
+      finish({ status: "timeout" });
+      controller.abort();
+    }
+  });
+}
+
+function readCompletion(message: PiAssistantMessage): PermissionJudgeOutcome {
+  try {
+    if (message.stopReason === "error") {
+      return Object.freeze({ status: "error" });
+    }
+    if (message.stopReason === "aborted") {
+      return Object.freeze({ status: "cancelled" });
+    }
+    if (message.stopReason !== "stop" || !Array.isArray(message.content)) {
+      return Object.freeze({ status: "invalid-response" });
+    }
+
+    const text: string[] = [];
+    for (const content of message.content) {
+      if (!isRecord(content) || typeof content.type !== "string") {
+        return Object.freeze({ status: "invalid-response" });
+      }
+      if (content.type === "toolCall") {
+        return Object.freeze({ status: "invalid-response" });
+      }
+      if (content.type === "thinking") {
+        continue;
+      }
+      if (content.type !== "text" || typeof content.text !== "string") {
+        return Object.freeze({ status: "invalid-response" });
+      }
+      text.push(content.text);
+    }
+    return text.length === 1
+      ? validatePermissionJudgeResponse(text[0])
+      : Object.freeze({ status: "invalid-response" });
+  } catch {
+    return Object.freeze({ status: "invalid-response" });
+  }
 }
 
 function registerJudgeCommand(
@@ -266,22 +479,30 @@ function createSessionResolver(
 }
 
 function createModelAvailability(context: PiExtensionContext): PermissionJudgeModelAvailability {
-  return (reference) => {
-    try {
-      const registry = context.modelRegistry;
-      if (!registry || !registry.find(reference.provider, reference.id)) {
-        return false;
-      }
-      const available = registry.getAvailable();
-      if (!available.some((model) => sameModel(model, reference))) {
-        return false;
-      }
-      const scoped = context.scopedModels ?? [];
-      return scoped.length === 0 || scoped.some(({ model }) => sameModel(model, reference));
-    } catch {
-      return false;
+  return (reference) => Boolean(resolveAvailableModel(context, reference));
+}
+
+function resolveAvailableModel(
+  context: PiExtensionContext,
+  reference: PermissionJudgeModelReference,
+): PiModel | undefined {
+  try {
+    const registry = context.modelRegistry;
+    const found = registry?.find(reference.provider, reference.id);
+    if (!registry || !found) {
+      return undefined;
     }
-  };
+    const available = registry.getAvailable();
+    if (!available.some((model) => sameModel(model, reference))) {
+      return undefined;
+    }
+    const scoped = context.scopedModels ?? [];
+    return scoped.length === 0 || scoped.some(({ model }) => sameModel(model, reference))
+      ? found
+      : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function notifyStatus(

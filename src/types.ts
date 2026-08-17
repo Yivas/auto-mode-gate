@@ -2,8 +2,8 @@ export type Shell = "bash" | "powershell" | "cmd";
 export type GateMode = "off" | "shadow" | "enforce";
 export type PolicyVerdict = "allow" | "deny" | "ambiguous";
 export type GateEffect = "allow" | "deny";
-export type DecisionSource = "deterministic";
 export type PermissionJudgeDecisionSource = "judge";
+export type DecisionSource = "deterministic" | PermissionJudgeDecisionSource;
 export type KnownHost = "opencode" | "pi" | "unknown";
 
 export type PermissionAssessmentState =
@@ -142,10 +142,10 @@ export type PermissionJudgeDecisionCode =
   | "AMG_DENY_JUDGE_INVALID_RESPONSE"
   | "AMG_DENY_JUDGE_ERROR";
 
-export type DecisionCode = DeterministicDecisionCode;
+export type DecisionCode = DeterministicDecisionCode | PermissionJudgeDecisionCode;
 
 export interface StructuredDenial {
-  readonly code: Exclude<DecisionCode, "AMG_ALLOW_SAFE_COMMAND">;
+  readonly code: Exclude<DecisionCode, "AMG_ALLOW_SAFE_COMMAND" | "AMG_ALLOW_JUDGE">;
   readonly message: string;
 }
 

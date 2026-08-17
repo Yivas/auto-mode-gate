@@ -11,6 +11,7 @@ import {
 import type {
   GateConfig,
   OpenCodeToolBeforeInput,
+  PermissionJudgeOutcome,
   PiExtensionContext,
   PiToolCallBlock,
   PiToolCallEvent,
@@ -31,6 +32,18 @@ interface Fixture {
 const fixtures = JSON.parse(
   await readFile(new URL("./fixtures/conformance.json", import.meta.url), "utf8"),
 ) as Fixture[];
+
+interface JudgeFixture extends Fixture {
+  readonly outcome: PermissionJudgeOutcome | null;
+  readonly expected: Fixture["expected"] & {
+    readonly source: string;
+    readonly calls: number;
+  };
+}
+
+const judgeFixtures = JSON.parse(
+  await readFile(new URL("./fixtures/judge-conformance.json", import.meta.url), "utf8"),
+) as JudgeFixture[];
 
 for (const host of ["opencode", "pi"] as const) {
   for (const fixture of fixtures) {
@@ -59,6 +72,67 @@ for (const host of ["opencode", "pi"] as const) {
     });
   }
 }
+
+for (const fixture of judgeFixtures) {
+  test(`judge adapter conformance: ${fixture.name}`, async () => {
+    let calls = 0;
+    let logs = 0;
+    const adapter = createShellAdapter("pi", {
+      globalConfig: fixture.config,
+      shell: fixture.input.shell as never,
+      onDecision() {
+        logs += 1;
+      },
+    });
+    const judge = fixture.outcome
+      ? {
+          async evaluate() {
+            calls += 1;
+            return fixture.outcome;
+          },
+        }
+      : undefined;
+    assert.ok(adapter.evaluateWithJudge);
+    const evaluation = await adapter.evaluateWithJudge(
+      {
+        shell: fixture.input.shell,
+        command: fixture.input.command,
+        truncated: fixture.input.truncated,
+      },
+      judge,
+    );
+
+    assert.deepEqual(
+      {
+        policyVerdict: evaluation.decision.policyVerdict,
+        effect: evaluation.decision.effect,
+        code: evaluation.decision.code,
+        source: evaluation.decision.source,
+        blocked: evaluation.decision.blocked,
+        calls,
+      },
+      fixture.expected,
+    );
+    assert.equal(logs, 1);
+  });
+}
+
+test("OpenCode blocks eligible actions when judge transport is unavailable", async () => {
+  const hooks = createOpenCodeHooks({
+    shell: "bash",
+    globalConfig: {
+      mode: "enforce",
+      trustedExecutablePaths: ["/trusted/bin/git"],
+    },
+  });
+
+  await assert.rejects(
+    hooks["tool.execute.before"](openCodeInput("bash"), {
+      args: { command: "/trusted/bin/git diff --stat ./src" },
+    }),
+    /AMG_DENY_JUDGE_UNAVAILABLE/u,
+  );
+});
 
 test("OpenCode blocks before a denied Bash call can run", async () => {
   const hooks = createOpenCodeHooks({ shell: "bash" });
@@ -104,10 +178,10 @@ test("OpenCode ignores tools outside the shell adapter scope", async () => {
   await hooks["tool.execute.before"](openCodeInput("read"), { args: {} });
 });
 
-test("Pi blocks before a denied Bash call can run", () => {
+test("Pi blocks before a denied Bash call can run", async () => {
   const handler = registerPiHandler(createPiExtension({ shell: "bash" }));
   let effectRan = false;
-  const result = handler(piEvent("bash", { command: "rm -rf build" }), { hasUI: true });
+  const result = await handler(piEvent("bash", { command: "rm -rf build" }), { hasUI: true });
   if (!result?.block) {
     effectRan = true;
   }
@@ -116,7 +190,7 @@ test("Pi blocks before a denied Bash call can run", () => {
   assert.equal(effectRan, false);
 });
 
-test("Pi allows only an explicit trusted executable path", () => {
+test("Pi allows only an explicit trusted executable path", async () => {
   const handler = registerPiHandler(
     createPiExtension({
       shell: "bash",
@@ -125,16 +199,16 @@ test("Pi allows only an explicit trusted executable path", () => {
   );
   const input = { command: "/trusted/bin/ls -la" };
 
-  const result = handler(piEvent("bash", input), {});
+  const result = await handler(piEvent("bash", input), {});
 
   assert.equal(result, undefined);
   assert.equal(input.command, "/trusted/bin/ls -la");
 });
 
-test("Pi blocks ambiguity without invoking future confirmation capability", () => {
+test("Pi blocks ambiguity without invoking future confirmation capability", async () => {
   const handler = registerPiHandler(createPiExtension({ shell: "bash" }));
   let confirmations = 0;
-  const result = handler(piEvent("bash", { command: "custom-tool inspect" }), {
+  const result = await handler(piEvent("bash", { command: "custom-tool inspect" }), {
     hasUI: true,
     ui: { confirm: () => { confirmations += 1; return true; } },
   });
@@ -143,12 +217,12 @@ test("Pi blocks ambiguity without invoking future confirmation capability", () =
   assert.equal(confirmations, 0);
 });
 
-test("Pi ignores tools outside the shell adapter scope", () => {
+test("Pi ignores tools outside the shell adapter scope", async () => {
   const handler = registerPiHandler(createPiExtension());
-  assert.equal(handler(piEvent("read", { path: "file.txt" }), {}), undefined);
+  assert.equal(await handler(piEvent("read", { path: "file.txt" }), {}), undefined);
 });
 
-test("Pi bounds adapters cached for distinct project directories", () => {
+test("Pi bounds adapters cached for distinct project directories", async () => {
   let resolutions = 0;
   const handler = registerPiHandler(
     createPiExtension(() => {
@@ -158,11 +232,11 @@ test("Pi bounds adapters cached for distinct project directories", () => {
   );
 
   for (let index = 0; index < 33; index += 1) {
-    handler(piEvent("bash", { command: "rm file" }), { cwd: `/project-${index}` });
+    await handler(piEvent("bash", { command: "rm file" }), { cwd: `/project-${index}` });
   }
   assert.equal(resolutions, 33);
 
-  handler(piEvent("bash", { command: "rm file" }), { cwd: "/project-0" });
+  await handler(piEvent("bash", { command: "rm file" }), { cwd: "/project-0" });
   assert.equal(resolutions, 34);
 });
 
@@ -175,7 +249,7 @@ test("missing shell evidence blocks Bash calls", async () => {
 
   const pi = registerPiHandler(createPiExtension());
   assert.match(
-    pi(piEvent("bash", { command: "rm file" }), {})?.reason ?? "",
+    (await pi(piEvent("bash", { command: "rm file" }), {}))?.reason ?? "",
     /AMG_DENY_UNKNOWN_ACTION/u,
   );
 });
@@ -235,7 +309,7 @@ test("host input errors fail closed without exposing thrown values", async () =>
 
   const handler = registerPiHandler(createPiExtension({ shell: "bash" }));
   const unreadableEvent = new Proxy({}, { get: () => { throw new Error(secret); } });
-  const result = handler(unreadableEvent as PiToolCallEvent, {});
+  const result = await handler(unreadableEvent as PiToolCallEvent, {});
   assert.match(result?.reason ?? "", /AMG_DENY_INTERNAL_ERROR/u);
   assert.equal(result?.reason.includes(secret), false);
 });
@@ -250,7 +324,10 @@ function piEvent(toolName: string, input: unknown): PiToolCallEvent {
 
 function registerPiHandler(extension: ReturnType<typeof createPiExtension>) {
   let handler:
-    | ((event: PiToolCallEvent, context: PiExtensionContext) => PiToolCallBlock | undefined)
+    | ((
+        event: PiToolCallEvent,
+        context: PiExtensionContext,
+      ) => PiToolCallBlock | undefined | Promise<PiToolCallBlock | undefined>)
     | undefined;
   extension({
     on(event, registeredHandler) {

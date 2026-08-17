@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import { buildPermissionJudgeRequest } from "./judge.ts";
 import { normalizeExecutableName, parseShellCommand } from "./shell.ts";
 import type {
   DecisionCode,
@@ -10,6 +11,8 @@ import type {
   KnownHost,
   NormalizedShellAction,
   PermissionAssessment,
+  PermissionJudge,
+  PermissionJudgeOutcome,
   Shell,
   StructuredDenial,
   VerifiedExecutable,
@@ -18,12 +21,21 @@ import type {
 const MAX_COMMAND_LENGTH = 4_096;
 const MAX_REJECTION_KEYS = 1_024;
 
-const messages: Record<Exclude<DecisionCode, "AMG_ALLOW_SAFE_COMMAND">, string> = {
+const messages: Record<
+  Exclude<DecisionCode, "AMG_ALLOW_SAFE_COMMAND" | "AMG_ALLOW_JUDGE">,
+  string
+> = {
   AMG_DENY_DANGEROUS_COMMAND: "The command matches a deterministic deny rule.",
   AMG_DENY_AMBIGUOUS: "The command could not be classified as safe.",
   AMG_DENY_UNKNOWN_ACTION: "The action type or shell is not supported.",
   AMG_DENY_INVALID_INPUT: "The action input is missing, truncated, or invalid.",
   AMG_DENY_INTERNAL_ERROR: "The action could not be evaluated safely.",
+  AMG_DENY_JUDGE: "The permission judge denied the action.",
+  AMG_DENY_JUDGE_UNAVAILABLE: "The permission judge is not available.",
+  AMG_DENY_JUDGE_TIMEOUT: "The permission judge did not respond before the deadline.",
+  AMG_DENY_JUDGE_CANCELLED: "The permission judge request was cancelled.",
+  AMG_DENY_JUDGE_INVALID_RESPONSE: "The permission judge returned an invalid response.",
+  AMG_DENY_JUDGE_ERROR: "The permission judge could not evaluate the action safely.",
 };
 
 const dangerousCommands: Record<Shell, ReadonlySet<string>> = {
@@ -160,6 +172,12 @@ type InternalAssessment = PermissionAssessment & {
   readonly equivalenceInput: string;
 };
 
+interface FinalResolution {
+  readonly effect: "allow" | "deny";
+  readonly code: DecisionCode;
+  readonly source: "deterministic" | "judge";
+}
+
 interface InputSnapshot {
   readonly kind: unknown;
   readonly tool: unknown;
@@ -211,15 +229,53 @@ export class AutoModeGate {
     }
   }
 
-  #finalize(assessment: InternalAssessment): GateDecision {
-    const effect = assessment.state === "allow-final" ? "allow" : "deny";
-    const blocked = effect === "deny" && this.#mode === "enforce";
+  async evaluateWithJudge(
+    input: unknown,
+    judge?: PermissionJudge,
+    signal?: AbortSignal,
+  ): Promise<GateDecision> {
+    try {
+      const assessment = assess(input, this.#trustedExecutablePaths);
+      if (this.#mode !== "enforce" || assessment.state !== "unresolved-eligible") {
+        return this.#finalize(assessment);
+      }
+      if (signal?.aborted) {
+        return this.#finalize(assessment, { status: "cancelled" });
+      }
+      if (!judge) {
+        return this.#finalize(assessment, { status: "unavailable" });
+      }
+
+      let outcome: PermissionJudgeOutcome;
+      try {
+        const fallbackSignal = signal ?? new AbortController().signal;
+        const value = await judge.evaluate(assessment.eligibility.request, fallbackSignal);
+        if (signal?.aborted) {
+          outcome = { status: "cancelled" };
+        } else {
+          const normalized = normalizeJudgeOutcome(value);
+          outcome = signal?.aborted ? { status: "cancelled" } : normalized;
+        }
+      } catch {
+        outcome = { status: signal?.aborted ? "cancelled" : "error" };
+      }
+      return this.#finalize(assessment, outcome);
+    } catch {
+      return createInternalErrorDecision(this.#mode);
+    }
+  }
+
+  #finalize(
+    assessment: InternalAssessment,
+    outcome?: PermissionJudgeOutcome,
+  ): GateDecision {
+    const resolution = resolveAssessment(assessment, outcome, this.#mode);
+    const blocked = resolution.effect === "deny" && this.#mode === "enforce";
     const repeatedRejectionCount =
-      effect === "deny"
-        ? this.#tracker.record(assessment.equivalenceInput, assessment.code)
+      resolution.effect === "deny"
+        ? this.#tracker.record(assessment.equivalenceInput, resolution.code)
         : 0;
-    const denial =
-      assessment.code === "AMG_ALLOW_SAFE_COMMAND" ? undefined : createDenial(assessment.code);
+    const denial = isAllowCode(resolution.code) ? undefined : createDenial(resolution.code);
     const host = normalizeHost(assessment.action?.host);
     const shell = assessment.action?.shell ?? "unknown";
     const tool = assessment.action?.tool ?? "unknown";
@@ -228,9 +284,9 @@ export class AutoModeGate {
       tool,
       shell,
       policyVerdict: assessment.policyVerdict,
-      effect,
-      code: assessment.code,
-      source: "deterministic",
+      effect: resolution.effect,
+      code: resolution.code,
+      source: resolution.source,
       mode: this.#mode,
       blocked,
       repeatedRejectionCount,
@@ -238,9 +294,9 @@ export class AutoModeGate {
 
     return Object.freeze({
       policyVerdict: assessment.policyVerdict,
-      effect,
-      code: assessment.code,
-      source: "deterministic",
+      effect: resolution.effect,
+      code: resolution.code,
+      source: resolution.source,
       mode: this.#mode,
       blocked,
       denial,
@@ -357,14 +413,14 @@ function assess(input: unknown, trustedExecutablePaths: ReadonlySet<string>): In
     ) {
       return allowed(action);
     }
-    return ambiguous(action);
+    return unresolved(action, trustedExecutablePaths);
   }
 
   if (action.shell === "bash" && executable === "find") {
     if (parsed.tokens.some((token) => dangerousFindOptions.has(token.toLowerCase()))) {
       return dangerous(action);
     }
-    return ambiguous(action);
+    return unresolved(action, trustedExecutablePaths);
   }
 
   if (
@@ -375,7 +431,7 @@ function assess(input: unknown, trustedExecutablePaths: ReadonlySet<string>): In
     return allowed(action);
   }
 
-  return ambiguous(action);
+  return unresolved(action, trustedExecutablePaths);
 }
 
 function allowed(action: NormalizedShellAction): InternalAssessment {
@@ -393,6 +449,24 @@ function dangerous(action: NormalizedShellAction): InternalAssessment {
     state: "deny-final",
     policyVerdict: "deny",
     code: "AMG_DENY_DANGEROUS_COMMAND",
+    action,
+    equivalenceInput: safeEquivalenceInput(action),
+  };
+}
+
+function unresolved(
+  action: NormalizedShellAction,
+  trustedExecutablePaths: ReadonlySet<string>,
+): InternalAssessment {
+  const request = buildPermissionJudgeRequest(action, [...trustedExecutablePaths]);
+  if (!request) {
+    return ambiguous(action);
+  }
+  return {
+    state: "unresolved-eligible",
+    policyVerdict: "ambiguous",
+    eligibility: Object.freeze({ state: "eligible", request }),
+    code: "AMG_DENY_AMBIGUOUS",
     action,
     equivalenceInput: safeEquivalenceInput(action),
   };
@@ -418,8 +492,96 @@ function rejectUnknown(input: unknown): InternalAssessment {
   };
 }
 
+function resolveAssessment(
+  assessment: InternalAssessment,
+  outcome: PermissionJudgeOutcome | undefined,
+  mode: GateMode,
+): FinalResolution {
+  if (assessment.state === "allow-final") {
+    return { effect: "allow", code: "AMG_ALLOW_SAFE_COMMAND", source: "deterministic" };
+  }
+  if (assessment.state === "deny-final") {
+    return { effect: "deny", code: assessment.code, source: "deterministic" };
+  }
+  if (assessment.state === "unresolved-ineligible" || mode !== "enforce") {
+    return { effect: "deny", code: "AMG_DENY_AMBIGUOUS", source: "deterministic" };
+  }
+
+  if (outcome?.status === "response") {
+    return outcome.response.verdict === "allow"
+      ? { effect: "allow", code: "AMG_ALLOW_JUDGE", source: "judge" }
+      : { effect: "deny", code: "AMG_DENY_JUDGE", source: "judge" };
+  }
+
+  switch (outcome?.status ?? "unavailable") {
+    case "timeout":
+      return { effect: "deny", code: "AMG_DENY_JUDGE_TIMEOUT", source: "judge" };
+    case "cancelled":
+      return { effect: "deny", code: "AMG_DENY_JUDGE_CANCELLED", source: "judge" };
+    case "invalid-response":
+      return { effect: "deny", code: "AMG_DENY_JUDGE_INVALID_RESPONSE", source: "judge" };
+    case "error":
+      return { effect: "deny", code: "AMG_DENY_JUDGE_ERROR", source: "judge" };
+    case "unavailable":
+      return { effect: "deny", code: "AMG_DENY_JUDGE_UNAVAILABLE", source: "judge" };
+  }
+}
+
+function normalizeJudgeOutcome(value: unknown): PermissionJudgeOutcome {
+  try {
+    if (
+      !isRecord(value) ||
+      !hasExactKeys(
+        value,
+        value.status === "response" ? ["status", "response"] : ["status"],
+      )
+    ) {
+      return invalidJudgeOutcome();
+    }
+
+    if (value.status === "response") {
+      const response = value.response;
+      if (
+        !isRecord(response) ||
+        !hasExactKeys(response, ["protocol", "verdict"]) ||
+        response.protocol !== "amg-permission-judge/v1" ||
+        (response.verdict !== "allow" && response.verdict !== "deny")
+      ) {
+        return invalidJudgeOutcome();
+      }
+      return Object.freeze({
+        status: "response",
+        response: Object.freeze({ protocol: response.protocol, verdict: response.verdict }),
+      });
+    }
+
+    if (
+      value.status === "unavailable" ||
+      value.status === "timeout" ||
+      value.status === "cancelled" ||
+      value.status === "invalid-response" ||
+      value.status === "error"
+    ) {
+      return Object.freeze({ status: value.status });
+    }
+    return invalidJudgeOutcome();
+  } catch {
+    return invalidJudgeOutcome();
+  }
+}
+
+function invalidJudgeOutcome(): PermissionJudgeOutcome {
+  return Object.freeze({ status: "invalid-response" });
+}
+
+function isAllowCode(
+  code: DecisionCode,
+): code is Extract<DecisionCode, "AMG_ALLOW_SAFE_COMMAND" | "AMG_ALLOW_JUDGE"> {
+  return code === "AMG_ALLOW_SAFE_COMMAND" || code === "AMG_ALLOW_JUDGE";
+}
+
 function createDenial(
-  code: Exclude<DecisionCode, "AMG_ALLOW_SAFE_COMMAND">,
+  code: Exclude<DecisionCode, "AMG_ALLOW_SAFE_COMMAND" | "AMG_ALLOW_JUDGE">,
 ): StructuredDenial {
   return Object.freeze({ code, message: messages[code] });
 }
@@ -562,6 +724,11 @@ function readExecutableIdentity(input: unknown): VerifiedExecutable | undefined 
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  const actual = Object.keys(value);
+  return actual.length === keys.length && keys.every((key) => actual.includes(key));
 }
 
 function safeEquivalenceInput(input: unknown): string {

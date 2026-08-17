@@ -2,20 +2,22 @@
 
 Auto Mode Gate is a host-neutral permission gate for OpenCode and Pi. It applies deterministic
 policy before Bash tool calls execute. Version 0.1.0 blocks unknown or ambiguous actions without a
-model judge. The planned permission judge runs only after deterministic analysis and receives the
-minimum structured context needed to decide an eligible unresolved case.
+model judge. The current unreleased source adds an opt-in Pi judge after deterministic analysis and
+sends only a closed sanitized request for an eligible unresolved Git action.
 
 ## Status
 
 The core, OpenCode plugin, Pi extension, file-based configuration, sanitized JSONL logs, and
-installation flows are implemented and tested. Version 0.1.0 is published on
+installation flows are implemented and tested. The current source includes session-scoped Pi judge
+controls and transport; the published package does not. Version 0.1.0 is published on
 [npm](https://www.npmjs.com/package/auto-mode-gate) and
 [GitHub](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.1.0). Read the
 [public documentation](https://yivas.github.io/auto-mode-gate/) for the guided installation and
 configuration reference. It supports only the validated baselines:
 
 - OpenCode 1.18.18;
-- Pi 0.84.1;
+- Pi 0.84.1 for the published deterministic adapter;
+- Pi 0.84.2 for the researched and isolated judge transport;
 - Node 24.9.0 for the test suite.
 
 ## Decision flow
@@ -23,9 +25,12 @@ configuration reference. It supports only the validated baselines:
 ```text
 action
 └─ deterministic policy
-   ├─ safe      -> continue
-   ├─ dangerous -> block
-   └─ ambiguous -> block
+   ├─ safe                     -> continue without AI
+   ├─ dangerous                -> block without AI
+   ├─ unresolved-ineligible    -> block without AI
+   └─ unresolved-eligible
+      ├─ active Pi judge allow -> continue
+      └─ deny/unavailable/fail -> block
 ```
 
 A narrow read-only allowance requires an exact absolute executable path present in the global
@@ -33,9 +38,11 @@ trusted-path list. Bare names, shell builtins, unsupported syntax, missing evide
 configuration, and internal errors fail closed. Native host permissions still apply after an
 Auto Mode Gate allowance.
 
-The planned flow will skip AI calls for deterministic allowances and denials. Only eligible
-ambiguous cases reach a user-selected model, and errors, timeouts, invalid output, or missing
-transport still block. A model decision will never override a deterministic denial.
+Deterministic allowances, denials, ineligible input, `off`, and `shadow` skip AI calls. In
+`enforce`, only an eligible Git `diff`, `log`, `show`, or `status` candidate can reach the
+user-selected Pi model. Errors, cancellation, timeout, invalid output, tool-call output, missing
+model, inactive session, and missing transport block. A model decision never overrides a
+deterministic denial.
 
 ## Install from npm
 
@@ -177,6 +184,7 @@ Global path resolution:
 Configured roots and every file path must be absolute for the current operating system. Relative
 `XDG_CONFIG_HOME` or `APPDATA` values fail closed.
 
+The `permissionJudge` keys below apply to the current unreleased source, not package `0.1.0`.
 Example global configuration:
 
 ```json
@@ -184,9 +192,18 @@ Example global configuration:
   "mode": "enforce",
   "shell": "powershell",
   "trustedExecutablePaths": [
-    "C:\\Windows\\System32\\where.exe"
+    "C:\\Windows\\System32\\where.exe",
+    "C:\\Program Files\\Git\\cmd\\git.exe"
   ],
-  "logPath": "C:\\Users\\example\\logs\\auto-mode-gate.jsonl"
+  "logPath": "C:\\Users\\example\\logs\\auto-mode-gate.jsonl",
+  "permissionJudge": {
+    "enabled": true,
+    "model": {
+      "provider": "example-provider",
+      "id": "example-model"
+    },
+    "timeoutMs": 15000
+  }
 }
 ```
 
@@ -198,21 +215,26 @@ Create the log directory before starting the host. The supported global keys are
 | `shell` | `bash`, `powershell`, `cmd` | Required before a Bash tool call can be allowed |
 | `trustedExecutablePaths` | Absolute path array | Exact global authority for narrow read-only allowances |
 | `logPath` | Absolute file path | Optional sanitized JSONL decision log |
+| `permissionJudge` | Strict object | Global opt-in, default Pi model, and 1,000–120,000 ms timeout |
 
-Project configuration accepts only `mode` and `trustedExecutablePaths`:
+Project configuration accepts `mode`, `trustedExecutablePaths`, and judge tightening:
 
 ```json
 {
   "mode": "enforce",
   "trustedExecutablePaths": [
     "C:\\Windows\\System32\\where.exe"
-  ]
+  ],
+  "permissionJudge": {
+    "enabled": false
+  }
 }
 ```
 
-Project configuration may tighten `shadow` to `enforce` and remove trusted paths. It cannot enable
-a globally `off` gate, relax `enforce`, set the shell, add trust absent from the global file, or set
-a log path. Each configuration file may contain at most 64 KiB, and each trusted-path list may
+Project configuration may tighten `shadow` to `enforce`, remove trusted paths, disable the judge,
+or reduce its timeout. It cannot enable a globally `off` gate, relax `enforce`, set the shell, add
+trust absent from the global file, set a log path, authorize the judge, change its model, or increase
+its timeout. Each configuration file may contain at most 64 KiB, and each trusted-path list may
 contain at most 256 entries. Unknown keys, invalid JSON, relative paths, oversized input, and
 unreadable files fail closed.
 
@@ -230,7 +252,7 @@ Each JSONL record contains only:
 
 - host, tool, and shell enums;
 - policy verdict, final effect, and stable decision code;
-- deterministic source, mode, and blocked state;
+- deterministic or judge source, mode, and blocked state;
 - an in-memory repeated-rejection count.
 
 Logs exclude commands, arguments, prompts, context, secrets, session IDs, call IDs, and persistent
@@ -240,9 +262,10 @@ blocks with `AMG_DENY_INTERNAL_ERROR`. Logging is disabled when `logPath` is abs
 ## Operation
 
 OpenCode and Pi activate independently through their package entries or source loader files.
-Removing one installation leaves the other host unchanged. Auto Mode Gate adds no status, enable,
-disable, or configuration command; those controls remain host- and file-based because neither
-shared host contract requires another command.
+Removing one installation leaves the other host unchanged. In Pi, `/amg-judge status`, `on`, `off`,
+`model <provider> <model-id>`, and `reset` control only the current in-memory session. Every session
+starts off. These commands do not change Pi's primary model, settings, or session JSONL. OpenCode
+has no judge command or model transport and blocks eligible cases as unavailable.
 
 Both hosts enforce only calls to their built-in `bash` tool. Other tools remain under native host
 permissions. A child process must load its own adapter. See

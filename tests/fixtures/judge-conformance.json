@@ -1,0 +1,119 @@
+[
+  {
+    "name": "deterministic allow skips judge",
+    "config": { "mode": "enforce", "trustedExecutablePaths": ["/trusted/bin/ls"] },
+    "input": {
+      "kind": "shell",
+      "tool": "shell",
+      "shell": "bash",
+      "command": "/trusted/bin/ls",
+      "executable": { "name": "ls", "path": "/trusted/bin/ls", "source": "trusted-path" }
+    },
+    "outcome": { "status": "response", "response": { "protocol": "amg-permission-judge/v1", "verdict": "allow" } },
+    "expected": { "policyVerdict": "allow", "effect": "allow", "code": "AMG_ALLOW_SAFE_COMMAND", "source": "deterministic", "blocked": false, "calls": 0 }
+  },
+  {
+    "name": "deterministic deny skips judge",
+    "config": { "mode": "enforce" },
+    "input": { "kind": "shell", "tool": "shell", "shell": "bash", "command": "rm file" },
+    "outcome": { "status": "response", "response": { "protocol": "amg-permission-judge/v1", "verdict": "allow" } },
+    "expected": { "policyVerdict": "deny", "effect": "deny", "code": "AMG_DENY_DANGEROUS_COMMAND", "source": "deterministic", "blocked": true, "calls": 0 }
+  },
+  {
+    "name": "ineligible ambiguity skips judge",
+    "config": { "mode": "enforce", "trustedExecutablePaths": ["/trusted/bin/git"] },
+    "input": { "kind": "shell", "tool": "shell", "shell": "bash", "command": "git diff" },
+    "outcome": { "status": "response", "response": { "protocol": "amg-permission-judge/v1", "verdict": "allow" } },
+    "expected": { "policyVerdict": "ambiguous", "effect": "deny", "code": "AMG_DENY_AMBIGUOUS", "source": "deterministic", "blocked": true, "calls": 0 }
+  },
+  {
+    "name": "judge allow permits eligible action",
+    "config": { "mode": "enforce", "trustedExecutablePaths": ["/trusted/bin/git"] },
+    "input": {
+      "kind": "shell", "tool": "shell", "shell": "bash", "command": "/trusted/bin/git diff --stat ./src",
+      "executable": { "name": "git", "path": "/trusted/bin/git", "source": "trusted-path" }
+    },
+    "outcome": { "status": "response", "response": { "protocol": "amg-permission-judge/v1", "verdict": "allow" } },
+    "expected": { "policyVerdict": "ambiguous", "effect": "allow", "code": "AMG_ALLOW_JUDGE", "source": "judge", "blocked": false, "calls": 1 }
+  },
+  {
+    "name": "judge deny blocks eligible action",
+    "config": { "mode": "enforce", "trustedExecutablePaths": ["/trusted/bin/git"] },
+    "input": {
+      "kind": "shell", "tool": "shell", "shell": "bash", "command": "/trusted/bin/git diff --stat ./src",
+      "executable": { "name": "git", "path": "/trusted/bin/git", "source": "trusted-path" }
+    },
+    "outcome": { "status": "response", "response": { "protocol": "amg-permission-judge/v1", "verdict": "deny" } },
+    "expected": { "policyVerdict": "ambiguous", "effect": "deny", "code": "AMG_DENY_JUDGE", "source": "judge", "blocked": true, "calls": 1 }
+  },
+  {
+    "name": "missing judge blocks eligible action",
+    "config": { "mode": "enforce", "trustedExecutablePaths": ["/trusted/bin/git"] },
+    "input": {
+      "kind": "shell", "tool": "shell", "shell": "bash", "command": "/trusted/bin/git diff",
+      "executable": { "name": "git", "path": "/trusted/bin/git", "source": "trusted-path" }
+    },
+    "outcome": null,
+    "expected": { "policyVerdict": "ambiguous", "effect": "deny", "code": "AMG_DENY_JUDGE_UNAVAILABLE", "source": "judge", "blocked": true, "calls": 0 }
+  },
+  {
+    "name": "judge timeout blocks eligible action",
+    "config": { "mode": "enforce", "trustedExecutablePaths": ["/trusted/bin/git"] },
+    "input": {
+      "kind": "shell", "tool": "shell", "shell": "bash", "command": "/trusted/bin/git diff",
+      "executable": { "name": "git", "path": "/trusted/bin/git", "source": "trusted-path" }
+    },
+    "outcome": { "status": "timeout" },
+    "expected": { "policyVerdict": "ambiguous", "effect": "deny", "code": "AMG_DENY_JUDGE_TIMEOUT", "source": "judge", "blocked": true, "calls": 1 }
+  },
+  {
+    "name": "judge cancellation blocks eligible action",
+    "config": { "mode": "enforce", "trustedExecutablePaths": ["/trusted/bin/git"] },
+    "input": {
+      "kind": "shell", "tool": "shell", "shell": "bash", "command": "/trusted/bin/git diff",
+      "executable": { "name": "git", "path": "/trusted/bin/git", "source": "trusted-path" }
+    },
+    "outcome": { "status": "cancelled" },
+    "expected": { "policyVerdict": "ambiguous", "effect": "deny", "code": "AMG_DENY_JUDGE_CANCELLED", "source": "judge", "blocked": true, "calls": 1 }
+  },
+  {
+    "name": "invalid judge response blocks eligible action",
+    "config": { "mode": "enforce", "trustedExecutablePaths": ["/trusted/bin/git"] },
+    "input": {
+      "kind": "shell", "tool": "shell", "shell": "bash", "command": "/trusted/bin/git diff",
+      "executable": { "name": "git", "path": "/trusted/bin/git", "source": "trusted-path" }
+    },
+    "outcome": { "status": "invalid-response" },
+    "expected": { "policyVerdict": "ambiguous", "effect": "deny", "code": "AMG_DENY_JUDGE_INVALID_RESPONSE", "source": "judge", "blocked": true, "calls": 1 }
+  },
+  {
+    "name": "judge error blocks eligible action",
+    "config": { "mode": "enforce", "trustedExecutablePaths": ["/trusted/bin/git"] },
+    "input": {
+      "kind": "shell", "tool": "shell", "shell": "bash", "command": "/trusted/bin/git diff",
+      "executable": { "name": "git", "path": "/trusted/bin/git", "source": "trusted-path" }
+    },
+    "outcome": { "status": "error" },
+    "expected": { "policyVerdict": "ambiguous", "effect": "deny", "code": "AMG_DENY_JUDGE_ERROR", "source": "judge", "blocked": true, "calls": 1 }
+  },
+  {
+    "name": "off mode skips judge",
+    "config": { "mode": "off", "trustedExecutablePaths": ["/trusted/bin/git"] },
+    "input": {
+      "kind": "shell", "tool": "shell", "shell": "bash", "command": "/trusted/bin/git diff",
+      "executable": { "name": "git", "path": "/trusted/bin/git", "source": "trusted-path" }
+    },
+    "outcome": { "status": "response", "response": { "protocol": "amg-permission-judge/v1", "verdict": "deny" } },
+    "expected": { "policyVerdict": "ambiguous", "effect": "deny", "code": "AMG_DENY_AMBIGUOUS", "source": "deterministic", "blocked": false, "calls": 0 }
+  },
+  {
+    "name": "shadow mode skips judge",
+    "config": { "mode": "shadow", "trustedExecutablePaths": ["/trusted/bin/git"] },
+    "input": {
+      "kind": "shell", "tool": "shell", "shell": "bash", "command": "/trusted/bin/git diff",
+      "executable": { "name": "git", "path": "/trusted/bin/git", "source": "trusted-path" }
+    },
+    "outcome": { "status": "response", "response": { "protocol": "amg-permission-judge/v1", "verdict": "deny" } },
+    "expected": { "policyVerdict": "ambiguous", "effect": "deny", "code": "AMG_DENY_AMBIGUOUS", "source": "deterministic", "blocked": false, "calls": 0 }
+  }
+]

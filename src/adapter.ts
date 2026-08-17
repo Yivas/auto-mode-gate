@@ -5,6 +5,7 @@ import type {
   GateConfig,
   GateDecision,
   KnownHost,
+  PermissionJudge,
   PermissionJudgeAuthorization,
   Shell,
   VerifiedExecutable,
@@ -31,6 +32,11 @@ export interface AdapterEvaluation {
 
 export interface ShellAdapter {
   evaluate(call: AdapterShellCall): AdapterEvaluation;
+  evaluateWithJudge?(
+    call: AdapterShellCall,
+    judge?: PermissionJudge,
+    signal?: AbortSignal,
+  ): Promise<AdapterEvaluation>;
 }
 
 export function createShellAdapter(host: KnownHost, options: AdapterOptions = {}): ShellAdapter {
@@ -43,20 +49,24 @@ export function createShellAdapter(host: KnownHost, options: AdapterOptions = {}
     return Object.freeze({
       evaluate(call: AdapterShellCall): AdapterEvaluation {
         try {
-          const shell = call.shell ?? configuredShell;
-          const binding = bindExecutable(call.command, shell, trustedPaths);
-          const command = binding?.command ?? call.command;
-          const decision = gate.evaluate({
-            kind: "shell",
-            tool: "shell",
-            shell,
-            command,
-            executable: binding?.executable,
-            truncated: call.truncated,
-            host,
-          });
+          const input = normalizeCall(call, configuredShell, trustedPaths, host);
+          const decision = gate.evaluate(input.action);
           options.onDecision?.(decision.log);
-          return Object.freeze({ decision, command });
+          return Object.freeze({ decision, command: input.command });
+        } catch {
+          return internalError(gate);
+        }
+      },
+      async evaluateWithJudge(
+        call: AdapterShellCall,
+        judge?: PermissionJudge,
+        signal?: AbortSignal,
+      ) {
+        try {
+          const input = normalizeCall(call, configuredShell, trustedPaths, host);
+          const decision = await gate.evaluateWithJudge(input.action, judge, signal);
+          options.onDecision?.(decision.log);
+          return Object.freeze({ decision, command: input.command });
         } catch {
           return internalError(gate);
         }
@@ -64,8 +74,34 @@ export function createShellAdapter(host: KnownHost, options: AdapterOptions = {}
     });
   } catch {
     const gate = new AutoModeGate({ mode: "enforce" });
-    return Object.freeze({ evaluate: () => internalError(gate) });
+    return Object.freeze({
+      evaluate: () => internalError(gate),
+      evaluateWithJudge: async () => internalError(gate),
+    });
   }
+}
+
+function normalizeCall(
+  call: AdapterShellCall,
+  configuredShell: Shell | undefined,
+  trustedPaths: readonly string[],
+  host: KnownHost,
+) {
+  const shell = call.shell ?? configuredShell;
+  const binding = bindExecutable(call.command, shell, trustedPaths);
+  const command = binding?.command ?? call.command;
+  return {
+    command,
+    action: {
+      kind: "shell",
+      tool: "shell",
+      shell,
+      command,
+      executable: binding?.executable,
+      truncated: call.truncated,
+      host,
+    },
+  };
 }
 
 export function denialReason(decision: GateDecision): string {

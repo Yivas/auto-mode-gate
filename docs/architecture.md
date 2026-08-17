@@ -12,9 +12,11 @@ host tool call
       ├─ deterministic assessment
       │  ├─ allow-final
       │  ├─ deny-final
-      │  └─ unresolved-ineligible
+      │  ├─ unresolved-ineligible
+      │  └─ unresolved-eligible
+      │     ├─ Pi session active: one isolated judge call
+      │     └─ unavailable/failure: deny
       └─ single finalization
-         ├─ fail-closed denial for unresolved actions
          ├─ repeated-rejection tracking
          └─ structured decision and sanitized log record
    └─ host enforcement
@@ -47,9 +49,10 @@ Deterministic precedence is:
 6. unsupported or ambiguous syntax;
 7. narrow safe-command allowance.
 
-Every result other than `allow` has a stable denial code. Current ambiguous input becomes
-`unresolved-ineligible`, then finalizes as `AMG_DENY_AMBIGUOUS` with a `deny` effect. No assessment
-is eligible for a judge yet.
+Every result other than `allow` has a stable denial code. Ambiguous input that cannot produce a
+closed sanitized request becomes `unresolved-ineligible` and finalizes as `AMG_DENY_AMBIGUOUS`.
+Eligible Git candidates use Pi's judge only in an authorized, active session. Missing transport,
+model, cancellation, timeout, error, or invalid output finalizes as a stable denial.
 
 The rejection tracker hashes an equivalence key and keeps at most 1,024 counts in memory. The hash
 is not returned or written to the log. Log records contain only normalized enums, the stable code,
@@ -99,11 +102,12 @@ the executable the operating system will open.
 project directory to file discovery. Missing project context installs a fail-closed hook. Other
 tools remain under native OpenCode permissions.
 
-`src/pi.ts` implements Pi's `tool_call` contract. It handles the built-in `bash` tool and returns
-`{ block: true, reason }` when enforcement blocks. `src/pi-runtime.ts` resolves configuration from
-the event context and keeps at most 32 adapters for distinct project directories. Missing project
-context blocks. Pi's `ctx.ui.confirm` remains unused in v1; ambiguous calls block even when UI
-exists.
+`src/pi.ts` implements Pi's async `tool_call` contract. It handles the built-in `bash` tool and
+awaits one isolated judge call before returning allow or `{ block: true, reason }`. The transport
+uses Pi's selected model registry, a new context with `tools: []`, no history, `maxRetries: 0`, host
+cancellation, and an independent local deadline. Tool-call output, late completion, invalid text,
+and provider failures block. `src/pi-runtime.ts` resolves configuration from the event context and
+keeps at most 32 project runtimes. Missing project context blocks.
 
 The adapters retain source-level factories for tests and embedding. The runtime entries add strict
 file discovery without modifying host settings. OpenCode and Pi activate independently through the
@@ -118,24 +122,24 @@ Trusted paths are configuration authority, not immutable file identity. Users mu
 trusted file and its ancestor directories. The hooks cannot hold an executable handle across the
 decision and execution, so replacement of a trusted file remains outside this gate's guarantees.
 
-## Deferred permission judge
+## Permission judge
 
 The core defines host-neutral judge types and a pure sanitizer boundary. It accepts only simple
 literal Git `diff`, `log`, `show`, or `status` candidates whose exact executable path is configured
 and bound by the adapter. Requests contain closed operation, option-risk, and argument-kind enums;
 they exclude command text, executable paths, values, URLs, secrets, host context, and identifiers.
-A strict validator accepts only the two canonical protocol responses. No adapter invokes a model
-judge yet. Isolated probes found a Pi-specific model call, but no equivalent safe OpenCode API or
-host-neutral transport was verified.
+A strict validator accepts only the two canonical protocol responses. Pi invokes the model only
+when global configuration authorizes it and the current session is active. OpenCode has no verified
+transport and maps the same eligible case to `AMG_DENY_JUDGE_UNAVAILABLE`.
 
 Pi registers `/amg-judge` controls for session status, activation, model selection, and reset. State
 is keyed by Pi's session-manager object, starts disabled, and is never written to settings or session
 JSONL. Model selection uses `find()` and `getAvailable()` without changing the primary model.
 
-A later phase will connect host transport after tests for tool isolation, recursion prevention,
-authentication, cancellation, timeout, and strict output validation. Deterministic allowances and
-denials skip the model. Only eligible unresolved cases receive minimal normalized context, and a
-judge will never override a deterministic denial.
+Deterministic allowances, denials, ineligible cases, and `off`/`shadow` skip the model. Only eligible
+unresolved cases receive minimal normalized context, and a judge never overrides a deterministic
+denial. Tests cover isolation, no recursion, local timeout, cancellation races, late resolution,
+strict output validation, and one final decision/log.
 
 ## Excluded systems
 

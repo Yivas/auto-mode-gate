@@ -57,7 +57,7 @@ test("configured OpenCode and Pi runtimes honor host activation, modes, and prec
   );
 
   const piHandler = registerPiHandler(createConfiguredPiExtension());
-  const piResult = piHandler(
+  const piResult = await piHandler(
     piEvent("bash", { command: "rm fictional-pi-secret" }),
     { cwd: enforceProject },
   );
@@ -170,7 +170,7 @@ test("configured runtimes fail closed when project context is unavailable", asyn
 
   const piHandler = registerPiHandler(createConfiguredPiExtension());
   assert.match(
-    piHandler(piEvent("bash", { command: "rm file" }), {})?.reason ?? "",
+    (await piHandler(piEvent("bash", { command: "rm file" }), {}))?.reason ?? "",
     /AMG_DENY_INTERNAL_ERROR/u,
   );
 });
@@ -202,7 +202,7 @@ async function runtimeReason(
 ): Promise<string | undefined> {
   if (host === "pi") {
     const handler = registerPiHandler(createConfiguredPiExtension());
-    return handler(piEvent("bash", { command }), { cwd: projectDirectory })?.reason;
+    return (await handler(piEvent("bash", { command }), { cwd: projectDirectory }))?.reason;
   }
 
   const hooks = await AutoModeGatePlugin({ directory: projectDirectory });
@@ -236,7 +236,10 @@ function piEvent(toolName: string, input: unknown): PiToolCallEvent {
 
 function registerPiHandler(extension: ReturnType<typeof createConfiguredPiExtension>) {
   let handler:
-    | ((event: PiToolCallEvent, context: PiExtensionContext) => PiToolCallBlock | undefined)
+    | ((
+        event: PiToolCallEvent,
+        context: PiExtensionContext,
+      ) => PiToolCallBlock | undefined | Promise<PiToolCallBlock | undefined>)
     | undefined;
   extension({
     on(event, registeredHandler) {

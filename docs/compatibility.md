@@ -3,13 +3,16 @@
 Auto Mode Gate 0.1.0 is the first public release. The versions below are validated host-contract
 baselines, not broad compatibility claims.
 
-| Host | Executed baseline | Pre-execution hook | User confirmation | V1 consequence |
+| Host | Executed baseline | Pre-execution hook | Published `0.1.0` | Current source |
 |-|-|-|-|-|
-| OpenCode | `v1.18.18`, `31406ccc51b4bd2a4e1e086b2bcaa5f7f804f26d` | `tool.execute.before` blocked before a stub effect | No synchronous generic plugin dialog verified | `ambiguous` blocks |
-| Pi | `v0.84.1`, `53fa77ccd8a279eb87e92294ef3687b03ff80112` | `tool_call` blocked before a stub effect | `ctx.ui.confirm` passed accept, reject, timeout, and no-UI probes | `ambiguous` blocks |
+| OpenCode | `v1.18.18`, `31406ccc51b4bd2a4e1e086b2bcaa5f7f804f26d` | `tool.execute.before` blocked before a stub effect | All ambiguity blocks | Eligible cases block as judge unavailable |
+| Pi | `v0.84.1`, `53fa77ccd8a279eb87e92294ef3687b03ff80112` | `tool_call` blocked before a stub effect | All ambiguity blocks | Authorized active sessions can use one isolated judge call |
 
-Pi `v0.84.2` at commit `914cf1472e715297caa30db4b9535d534a9eb718` remains a static research
-baseline. It was not installed or executed during the isolated probes.
+Pi `v0.84.2` at commit `914cf1472e715297caa30db4b9535d534a9eb718` was installed only in a
+temporary directory and exercised against a loopback OpenAI-compatible server. Ten probe cases
+covered async pre-tool waiting, model selection, zero tools, no reentry, timeout, cancellation,
+errors, invalid output, missing models, and session reset. No real inference or active profile was
+used.
 
 ## Sources
 
@@ -30,10 +33,11 @@ Pi:
 
 ## Adapter verification
 
-The source-level adapter suite replays the shared policy corpus for both hosts. Host doubles assert
-that OpenCode throws and Pi returns a blocking result before a stub effect, that allowed Bash calls
-already contain the exact trusted path evaluated by the core, and that `shadow`, `off`, and project
-configuration keep the core's restrictions.
+The source-level adapter suite replays the shared deterministic and judge corpora. Host doubles
+assert that OpenCode throws and Pi returns a blocking result before a stub effect, that allowed Bash
+calls already contain the exact trusted path evaluated by the core, and that `shadow`, `off`, project
+configuration, cancellation, timeout, late completion, invalid output, and transport errors preserve
+the core's restrictions.
 
 These tests exercise the pinned hook shapes without starting either host. The executed baselines in
 the table remain evidence for hook ordering; the adapter implementation did not modify or start
@@ -60,8 +64,10 @@ points.
 Both adapters use the same policy fixtures and reason codes. A host with fewer capabilities must
 never grant broader permission.
 
-Pi confirmation is a tested adapter capability, but v1 does not expose it for ambiguous actions.
-Both adapters block ambiguity while the permission judge is deferred.
+Pi confirmation remains unused. The current source instead uses Pi's public model registry for one
+isolated call when global configuration authorizes the judge and the current session is active.
+OpenCode has no equivalent verified transport and returns the same fail-closed unavailable code for
+an eligible case.
 
 ## Known limits
 
@@ -71,8 +77,11 @@ Both adapters block ambiguity while the permission judge is deferred.
 - OpenCode sessions covered by the loaded plugin use the same hook, but a separately launched host
   process must load the plugin itself.
 - OpenCode's researched pre-tool hook does not include agent identity or an abort signal.
-- Pi 0.84.1 exposes a host-native model call; no equivalent isolated API was verified in OpenCode 1.18.18.
-- No common permission-judge transport is enabled in v1.
+- Pi 0.84.2 exposes the model-registry transport used by the current source; no equivalent isolated
+  API was verified in OpenCode 1.18.18.
+- The current judge transport is Pi-specific and is not included in published package `0.1.0`.
+- Only simple literal Git `diff`, `log`, `show`, and `status` requests with a configured exact path
+  can become eligible; values, paths, URLs, secrets, host context, and IDs are not transported.
 - Coverage is limited to execution paths proven to pass through the documented hooks.
 - Runtime entries discover strict global and project JSON files. The npm package and source
   installation use the same TypeScript entries; a source loader still depends on its checkout path.
@@ -83,6 +92,7 @@ Both adapters block ambiguity while the permission judge is deferred.
 ## Before claiming support
 
 Each supported release must repeat isolated integration tests that prove the hook blocks before a
-stub side effect, timeout and error paths fail closed, configuration does not overwrite user files,
-and removal leaves unrelated configuration unchanged. Source-profile results do not authorize a
-package release or broader compatibility claim.
+stub side effect, timeout, cancellation, late completion, model absence, invalid output, and error
+paths fail closed, configuration does not overwrite user files, and removal leaves unrelated
+configuration unchanged. Source-profile and loopback results do not authorize a package release,
+real-model inference claim, or broader compatibility claim.
