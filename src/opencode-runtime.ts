@@ -13,10 +13,13 @@ export const AutoModeGatePlugin: OpenCodePlugin = async (input) => {
   }
 };
 
-function readDirectory(input: unknown): string | undefined {
+function readDirectory(input: unknown): string {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
-    return undefined;
+    throw new Error("OpenCode did not provide a project directory.");
   }
   const directory = (input as Record<string, unknown>).directory;
-  return typeof directory === "string" ? directory : undefined;
+  if (typeof directory !== "string" || directory.trim() === "") {
+    throw new Error("OpenCode did not provide a project directory.");
+  }
+  return directory;
 }

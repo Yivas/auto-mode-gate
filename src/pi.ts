@@ -5,6 +5,8 @@ import {
   type ShellAdapter,
 } from "./adapter.ts";
 
+const MAX_CACHED_ADAPTERS = 32;
+
 export interface PiToolCallEvent {
   readonly toolName: string;
   readonly toolCallId: string;
@@ -93,6 +95,12 @@ function createAdapterResolver(
           throw new Error("Auto Mode Gate configuration could not be loaded safely.");
         },
       });
+    }
+    if (adapters.size >= MAX_CACHED_ADAPTERS) {
+      const oldestKey = adapters.keys().next().value;
+      if (oldestKey !== undefined) {
+        adapters.delete(oldestKey);
+      }
     }
     adapters.set(key, adapter);
     return adapter;

@@ -149,6 +149,32 @@ test("both runtime entries fail closed on malformed configuration and log errors
   }
 });
 
+test("configured runtimes fail closed when project context is unavailable", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "auto-mode-gate-missing-context-"));
+  const xdgConfigHome = join(root, "xdg");
+  const configDirectory = join(xdgConfigHome, "auto-mode-gate");
+  await mkdir(configDirectory, { recursive: true });
+  useXdgConfig(t, xdgConfigHome);
+  await writeFile(
+    join(configDirectory, "config.json"),
+    JSON.stringify({ mode: "shadow", shell: "bash" }),
+  );
+
+  for (const input of [{}, { directory: "" }]) {
+    const hooks = await AutoModeGatePlugin(input);
+    await assert.rejects(
+      hooks["tool.execute.before"](openCodeInput("bash"), { args: { command: "rm file" } }),
+      /AMG_DENY_INTERNAL_ERROR/u,
+    );
+  }
+
+  const piHandler = registerPiHandler(createConfiguredPiExtension());
+  assert.match(
+    piHandler(piEvent("bash", { command: "rm file" }), {})?.reason ?? "",
+    /AMG_DENY_INTERNAL_ERROR/u,
+  );
+});
+
 test("OpenCode installs a fail-closed hook when its directory cannot be read", async () => {
   const input = new Proxy({}, { get: () => { throw new Error("unreadable directory"); } });
   const hooks = await AutoModeGatePlugin(input);

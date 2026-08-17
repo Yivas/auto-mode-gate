@@ -66,11 +66,12 @@ owns the shell, mode, exact trusted executable paths, and optional log path. Pro
 may remove trusted paths and tighten `shadow` to `enforce`; it cannot set the shell or log path, add
 trust absent from the global file, activate a globally disabled gate, or relax `enforce`.
 
-Both files use strict JSON keys and paths that are absolute for the current operating system.
-Relative configuration roots, cross-platform path forms, malformed JSON, unreadable files, and
-unknown keys fail closed. Missing global configuration defaults to `enforce` without shell evidence
-or trusted paths. Runtime adapters load the files when they start, so changes require a host restart
-or reload.
+Both files use strict JSON keys and paths that are absolute for the current operating system. A
+configuration file may contain at most 64 KiB, and each trusted-path list may contain at most 256
+entries. Relative configuration roots, cross-platform path forms, malformed JSON, unreadable or
+oversized files, and unknown keys fail closed. Missing global configuration defaults to `enforce`
+without shell evidence or trusted paths. Runtime adapters load the files when they start, so changes
+require a host restart or reload.
 
 ## Adapters
 
@@ -84,12 +85,14 @@ the executable the operating system will open.
 `src/opencode.ts` implements the OpenCode `tool.execute.before` contract fixed in
 [`compatibility.md`](compatibility.md). It handles the `bash` tool and throws a sanitized denial when
 `decision.blocked` is true. `src/opencode-runtime.ts` supplies the loader-facing plugin and binds the
-project directory to file discovery. Other tools remain under native OpenCode permissions.
+project directory to file discovery. Missing project context installs a fail-closed hook. Other
+tools remain under native OpenCode permissions.
 
 `src/pi.ts` implements Pi's `tool_call` contract. It handles the built-in `bash` tool and returns
 `{ block: true, reason }` when enforcement blocks. `src/pi-runtime.ts` resolves configuration from
-the event context and caches one adapter per project directory. Pi's `ctx.ui.confirm` remains
-unused in v1; ambiguous calls block even when UI exists.
+the event context and keeps at most 32 adapters for distinct project directories. Missing project
+context blocks. Pi's `ctx.ui.confirm` remains unused in v1; ambiguous calls block even when UI
+exists.
 
 The adapters retain source-level factories for tests and embedding. The runtime entries add strict
 file discovery without modifying host settings. OpenCode and Pi activate independently through the

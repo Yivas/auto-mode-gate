@@ -44,15 +44,8 @@ system permissions.
 
 ### OpenCode
 
-Install for the current project:
-
-```text
-opencode plugin auto-mode-gate@0.1.0
-```
-
-Add `--global` to install it for every project.
-
-You can also declare the package in the `plugin` array of your project or global `opencode.json`:
+The recommended setup is to declare the package in the `plugin` array of your project or global
+`opencode.json`:
 
 ```json
 {
@@ -62,7 +55,15 @@ You can also declare the package in the `plugin` array of your project or global
 ```
 
 Merge that entry into an existing `plugin` array without removing other plugins or configuration.
-OpenCode resolves npm plugins declared in the file when it starts.
+OpenCode resolves configured npm plugins when it starts.
+
+Alternatively, install it for the current project:
+
+```text
+opencode plugin auto-mode-gate@0.1.0
+```
+
+Add `--global` to install it for every project.
 
 Verify the resolved `plugin` list:
 
@@ -211,7 +212,9 @@ Project configuration accepts only `mode` and `trustedExecutablePaths`:
 
 Project configuration may tighten `shadow` to `enforce` and remove trusted paths. It cannot enable
 a globally `off` gate, relax `enforce`, set the shell, add trust absent from the global file, or set
-a log path. Unknown keys, invalid JSON, relative paths, and unreadable files fail closed.
+a log path. Each configuration file may contain at most 64 KiB, and each trusted-path list may
+contain at most 256 entries. Unknown keys, invalid JSON, relative paths, oversized input, and
+unreadable files fail closed.
 
 Modes behave as follows:
 

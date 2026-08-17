@@ -1,4 +1,4 @@
-import { appendFileSync, readFileSync } from "node:fs";
+import { appendFileSync, closeSync, openSync, readSync } from "node:fs";
 import { homedir } from "node:os";
 import { posix, win32 } from "node:path";
 
@@ -6,6 +6,9 @@ import type { AdapterOptions } from "./adapter.ts";
 import type { DecisionLogRecord, GateConfig, GateMode, Shell } from "./types.ts";
 
 export const PROJECT_CONFIG_NAME = ".auto-mode-gate.json";
+
+const MAX_CONFIG_BYTES = 65_536;
+const MAX_TRUSTED_EXECUTABLE_PATHS = 256;
 
 export interface ConfigDiscoveryOptions {
   readonly globalConfigPath?: string;
@@ -124,13 +127,33 @@ function parseProjectConfig(
 }
 
 function readOptionalJson(path: string): unknown {
+  let descriptor: number | undefined;
   try {
-    return JSON.parse(readFileSync(path, "utf8"));
+    descriptor = openSync(path, "r");
+    const buffer = Buffer.allocUnsafe(MAX_CONFIG_BYTES + 1);
+    let offset = 0;
+
+    while (offset < buffer.length) {
+      const bytesRead = readSync(descriptor, buffer, offset, buffer.length - offset, null);
+      if (bytesRead === 0) {
+        break;
+      }
+      offset += bytesRead;
+    }
+
+    if (offset > MAX_CONFIG_BYTES) {
+      throw new Error("Configuration file is too large.");
+    }
+    return JSON.parse(buffer.toString("utf8", 0, offset));
   } catch (error) {
     if (isFileNotFound(error)) {
       return undefined;
     }
     throw error;
+  } finally {
+    if (descriptor !== undefined) {
+      closeSync(descriptor);
+    }
   }
 }
 
@@ -161,6 +184,7 @@ function readPaths(value: unknown, platform: NodeJS.Platform): readonly string[]
   }
   if (
     !Array.isArray(value) ||
+    value.length > MAX_TRUSTED_EXECUTABLE_PATHS ||
     value.some((path) => typeof path !== "string" || !pathForPlatform(platform).isAbsolute(path))
   ) {
     throw new Error("Invalid path list.");

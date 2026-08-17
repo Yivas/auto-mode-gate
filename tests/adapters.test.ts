@@ -148,6 +148,24 @@ test("Pi ignores tools outside the shell adapter scope", () => {
   assert.equal(handler(piEvent("read", { path: "file.txt" }), {}), undefined);
 });
 
+test("Pi bounds adapters cached for distinct project directories", () => {
+  let resolutions = 0;
+  const handler = registerPiHandler(
+    createPiExtension(() => {
+      resolutions += 1;
+      return { shell: "bash", globalConfig: { mode: "off" } };
+    }),
+  );
+
+  for (let index = 0; index < 33; index += 1) {
+    handler(piEvent("bash", { command: "rm file" }), { cwd: `/project-${index}` });
+  }
+  assert.equal(resolutions, 33);
+
+  handler(piEvent("bash", { command: "rm file" }), { cwd: "/project-0" });
+  assert.equal(resolutions, 34);
+});
+
 test("missing shell evidence blocks Bash calls", async () => {
   const openCode = createOpenCodeHooks();
   await assert.rejects(

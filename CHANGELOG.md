@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Fail closed when OpenCode or Pi omits the project directory required for project configuration.
+- Bound Pi's per-project adapter cache and file-based configuration input.
+- Repair wiki navigation and check internal documentation links before each build.
+
 ## 0.1.0 - 2026-08-16
 
 - Add the deterministic host-neutral permission core.

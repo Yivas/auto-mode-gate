@@ -57,7 +57,7 @@ Project configuration accepts only `mode` and `trustedExecutablePaths`:
 
 A project can tighten `shadow` to `enforce` and remove trusted paths. It cannot enable a globally `off` gate, relax `enforce`, set the shell, add trust absent from the global file, or set a log path.
 
-Unknown keys, invalid JSON, relative paths, and unreadable files fail closed.
+Each configuration file may contain at most 64 KiB, and each trusted-path list may contain at most 256 entries. Unknown keys, invalid JSON, relative paths, oversized input, and unreadable files fail closed.
 
 ## Modes
 
@@ -73,6 +73,6 @@ Missing shell evidence, malformed input, malformed configuration, unsupported sy
 
 ## Next steps
 
-- [Understand the decision rules](../guide/decisions/).
-- [Review modes and sanitized logs](../guide/modes-and-logs/).
-- [Check the validated host baselines](../reference/validated-baselines/).
+- [Understand the decision rules](../../guide/decisions/).
+- [Review modes and sanitized logs](../../guide/modes-and-logs/).
+- [Check the validated host baselines](../../reference/validated-baselines/).

@@ -120,6 +120,71 @@ test("a configured log failure blocks an otherwise allowed action", async () => 
   assert.equal(decision.blocked, true);
 });
 
+test("configuration file size has an exact byte limit", async () => {
+  const fixture = await createFixture();
+  const config = JSON.stringify({ mode: "enforce", shell: testShell });
+  const atLimit = `${config}${" ".repeat(65_536 - Buffer.byteLength(config))}`;
+  assert.equal(Buffer.byteLength(atLimit), 65_536);
+  await writeFile(fixture.globalConfigPath, atLimit);
+
+  const accepted = createShellAdapter(
+    "pi",
+    loadAdapterOptions(fixture.projectDirectory, {
+      globalConfigPath: fixture.globalConfigPath,
+    }),
+  ).evaluate({ command: dangerousCommand }).decision;
+  assert.equal(accepted.code, "AMG_DENY_DANGEROUS_COMMAND");
+
+  await writeFile(fixture.globalConfigPath, `${atLimit} `);
+  const rejected = createShellAdapter(
+    "pi",
+    loadAdapterOptions(fixture.projectDirectory, {
+      globalConfigPath: fixture.globalConfigPath,
+    }),
+  ).evaluate({ command: dangerousCommand }).decision;
+  assert.equal(rejected.code, "AMG_DENY_INTERNAL_ERROR");
+  assert.equal(rejected.blocked, true);
+});
+
+test("trusted executable path lists have a fixed limit", async () => {
+  const fixture = await createFixture();
+  const extraPaths = Array.from({ length: 255 }, (_, index) =>
+    process.platform === "win32"
+      ? `C:\\trusted\\tool-${index}.exe`
+      : `/trusted/bin/tool-${index}`,
+  );
+  const pathsAtLimit = [trustedRead, ...extraPaths];
+  await writeFile(
+    fixture.globalConfigPath,
+    JSON.stringify({ mode: "enforce", shell: testShell, trustedExecutablePaths: pathsAtLimit }),
+  );
+
+  const allowed = createShellAdapter(
+    "pi",
+    loadAdapterOptions(fixture.projectDirectory, {
+      globalConfigPath: fixture.globalConfigPath,
+    }),
+  ).evaluate({ command: trustedRead }).decision;
+  assert.equal(allowed.code, "AMG_ALLOW_SAFE_COMMAND");
+
+  await writeFile(
+    fixture.globalConfigPath,
+    JSON.stringify({
+      mode: "enforce",
+      shell: testShell,
+      trustedExecutablePaths: [...pathsAtLimit, untrustedGit],
+    }),
+  );
+  const rejected = createShellAdapter(
+    "pi",
+    loadAdapterOptions(fixture.projectDirectory, {
+      globalConfigPath: fixture.globalConfigPath,
+    }),
+  ).evaluate({ command: trustedRead }).decision;
+  assert.equal(rejected.code, "AMG_DENY_INTERNAL_ERROR");
+  assert.equal(rejected.blocked, true);
+});
+
 test("the default global path follows XDG and Windows application data", () => {
   assert.equal(
     getDefaultGlobalConfigPath({ XDG_CONFIG_HOME: "/tmp/xdg" }, "linux", "/home/test"),
