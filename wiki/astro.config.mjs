@@ -46,7 +46,7 @@ export default defineConfig({
         {
           label: 'Project',
           collapsed: true,
-          items: [{ slug: 'project/participation-and-provenance', label: 'Participation and provenance' }],
+          items: [{ slug: 'project/participation', label: 'Participation' }],
         },
       ],
       pagination: true,

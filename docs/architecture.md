@@ -110,12 +110,13 @@ V1 does not define or invoke a model judge. Isolated probes found a Pi-specific 
 equivalent safe OpenCode API or host-neutral transport was verified. The core therefore converts
 every ambiguous result into a denial with a stable reason code.
 
-A later version may add a user-selected model after both hosts have a tested transport with tool
+The target design adds a user-selected model after both hosts have a tested transport with tool
 isolation, recursion prevention, authentication, cancellation, timeout, and strict output
-validation. A judge will never override a deterministic denial.
+validation. Deterministic allowances and denials skip the model. Only eligible unresolved cases
+receive minimal normalized context, and a judge will never override a deterministic denial.
 
 ## Excluded systems
 
-This project does not include Swarm's architect, coder, reviewer, planning, phases, `.swarm`
-state, memory, QA, worktrees, council, or multi-agent orchestration. It is not an operating-system
+This project does not include multi-agent orchestration, agent roles, planning phases, shared
+memory, QA coordination, worktrees, councils, or orchestration state. It is not an operating-system
 sandbox, a remote policy service, or a replacement for native host permissions.

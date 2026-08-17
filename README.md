@@ -1,8 +1,9 @@
 # Auto Mode Gate
 
-Auto Mode Gate is a host-neutral permission gate for OpenCode and Pi. It applies one deterministic
-policy before Bash tool calls execute. V1 blocks unknown or ambiguous actions and does not invoke a
-model judge.
+Auto Mode Gate is a host-neutral permission gate for OpenCode and Pi. It applies deterministic
+policy before Bash tool calls execute. Version 0.1.0 blocks unknown or ambiguous actions without a
+model judge. The planned permission judge runs only after deterministic analysis and receives the
+minimum structured context needed to decide an eligible unresolved case.
 
 ## Status
 
@@ -31,6 +32,10 @@ A narrow read-only allowance requires an exact absolute executable path present 
 trusted-path list. Bare names, shell builtins, unsupported syntax, missing evidence, malformed
 configuration, and internal errors fail closed. Native host permissions still apply after an
 Auto Mode Gate allowance.
+
+The planned flow will skip AI calls for deterministic allowances and denials. Only eligible
+ambiguous cases reach a user-selected model, and errors, timeouts, invalid output, or missing
+transport still block. A model decision will never override a deterministic denial.
 
 ## Install from npm
 
@@ -279,14 +284,9 @@ The strict TypeScript check requires external compiler and Node type-definition 
 versions, flags, and command used for the validated baseline are recorded in the private project
 evidence. No broader Node or host compatibility is claimed.
 
-## Upstream and license
+## License
 
-The design study uses OpenCode Swarm at commit
-[`50033bc1e0a0d943433701042fed90b2a791f7fe`](https://github.com/ZaxbyHub/opencode-swarm/commit/50033bc1e0a0d943433701042fed90b2a791f7fe)
-as a reference. OpenCode Swarm is MIT licensed. This repository is an independent implementation
-and excludes Swarm's orchestration system.
-
-See [`docs/upstream.md`](docs/upstream.md), [`NOTICE`](NOTICE), and [`LICENSE`](LICENSE).
+Auto Mode Gate is distributed under the [MIT License](LICENSE).
 
 ## Participation
 
@@ -296,5 +296,4 @@ Auto Mode Gate is maintained under MIT. Read the [contribution policy](CONTRIBUT
 [GitHub private vulnerability reporting](https://github.com/Yivas/auto-mode-gate/security/advisories/new).
 Pull requests are not currently accepted.
 
-Auto Mode Gate is independent and is not affiliated with Anthropic, OpenCode, Pi, or OpenCode
-Swarm.
+Auto Mode Gate is an independent project and is not affiliated with or endorsed by OpenCode or Pi.

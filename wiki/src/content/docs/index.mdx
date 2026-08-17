@@ -3,7 +3,7 @@ title: Auto Mode Gate
 description: Deterministic Bash permission gate for OpenCode and Pi.
 hero:
   title: Deterministic Bash permission gate for OpenCode and Pi
-  tagline: Inspect the action first, then allow a narrow safe path or block everything uncertain.
+  tagline: Resolve deterministic cases first, then reserve AI review for eligible uncertainty.
   actions:
     - text: Install
       link: ./getting-started/install/
@@ -13,7 +13,7 @@ hero:
       variant: secondary
 ---
 
-Auto Mode Gate applies one host-neutral policy before a built-in Bash tool call executes. Version 0.1.0 blocks dangerous and ambiguous actions without invoking a model judge.
+Auto Mode Gate applies one host-neutral policy before a built-in Bash tool call executes. Version 0.1.0 blocks dangerous and ambiguous actions without invoking a model judge. The planned judge will run only after deterministic analysis for eligible cases that remain unresolved.
 
 :::caution[Not an operating-system sandbox]
 Auto Mode Gate does not replace native OpenCode or Pi permissions. A separately launched child host must load its own adapter, and coverage is limited to the documented hook paths.
@@ -30,6 +30,10 @@ Auto Mode Gate does not replace native OpenCode or Pi permissions. A separately 
 | `safe` | Continue when the exact configured executable path is trusted. |
 | `dangerous` | Block before the host executes the call. |
 | `ambiguous` | Block because the evidence or syntax is not sufficient. |
+
+## Planned AI review
+
+A future permission judge will receive minimal structured context only for eligible ambiguous cases. Deterministic allowances and denials will not spend a model call, and the judge will never override a deterministic denial. Errors, timeouts, invalid output, and unavailable host transport will continue to block.
 
 ## Choose a path
 

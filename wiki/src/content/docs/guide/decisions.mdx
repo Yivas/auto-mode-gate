@@ -3,7 +3,7 @@ title: Understand decisions
 description: Learn how deterministic rules classify safe, dangerous, and ambiguous Bash calls.
 ---
 
-Auto Mode Gate applies deterministic rules before any future model judge. Version 0.1.0 does not invoke a model judge; every ambiguous result blocks.
+Auto Mode Gate applies deterministic rules before the planned permission judge. Version 0.1.0 does not invoke a model judge; every ambiguous result blocks. The target design sends only eligible unresolved cases to a user-selected model.
 
 ## Decision flow
 
@@ -45,9 +45,11 @@ The deterministic precedence is:
 
 Every result other than `allow` has a stable denial code. Ambiguous actions use `AMG_DENY_AMBIGUOUS` and a final `deny` effect.
 
-## No model override
+## Planned permission judge
 
-A later permission judge may be considered only after both hosts have a tested, isolated transport with authentication, cancellation, timeout, recursion prevention, and strict output validation. It will never override a deterministic denial.
+The permission judge is the final stage of the target design. Deterministic allowances and denials skip the model, which reduces calls and prevents the judge from weakening fixed policy. Eligible ambiguous cases receive minimal normalized context instead of command history, prompts, objectives, or unrelated session data.
+
+The judge requires a tested, isolated host transport with authentication, cancellation, timeout, recursion prevention, and strict output validation. It will never override a deterministic denial. Missing transport, errors, timeouts, and invalid output fail closed.
 
 ## Next steps
 

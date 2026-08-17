@@ -26,9 +26,11 @@ The shared core does not execute commands, display UI, contact a network service
 
 The project does not provide an operating-system sandbox, a remote policy service, or a replacement for native host permissions.
 
-## No model judge in v1
+## Permission judge status
 
 Version 0.1.0 does not define or invoke a model judge. Pi exposes a host-native model call, but no equivalent safe OpenCode API or host-neutral transport was verified. The core therefore converts every ambiguous result into a denial with a stable reason code.
+
+The target design invokes a user-selected model only after deterministic policy leaves an eligible case unresolved. This ordering avoids model calls for known safe and dangerous actions. The judge will receive minimal structured context and fail closed when transport, timeout, validation, or model output fails.
 
 ## Next steps
 

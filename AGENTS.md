@@ -11,8 +11,8 @@ file-based configuration, npm and source-install documentation, and tests. Versi
 first public release on GitHub and npm.
 
 The product uses the shared core through separate OpenCode and Pi adapters. It must not contain
-Swarm orchestration, private planning, local profiles, prompts, objectives, credentials, sessions,
-real logs, or operational configuration values. Generic schemas, sanitized log formats,
+multi-agent orchestration, private planning, local profiles, prompts, objectives, credentials,
+sessions, real logs, or operational configuration values. Generic schemas, sanitized log formats,
 documentation, and fictional examples are allowed.
 
 ## Rules
@@ -33,15 +33,13 @@ documentation, and fictional examples are allowed.
 - Run the repository's formatter, type checker, tests, package inspection, and code review after
   executable changes.
 
-## Upstream
+## Third-party code
 
-OpenCode Swarm is referenced at commit
-`50033bc1e0a0d943433701042fed90b2a791f7fe` under MIT. Before copying or adapting code, record the
-source file and symbol, confirm transitive dependencies, retain required notices, and update
-`NOTICE` and `docs/upstream.md`.
+Before copying or adapting third-party code, record its source file, symbol, revision, and license.
+Confirm transitive dependencies and retain every notice required by the source license.
 
-Do not port architect, coder, reviewer, planning, phases, `.swarm`, memory, QA, worktrees, council,
-or any other multi-agent orchestration feature.
+Do not port multi-agent orchestration, agent roles, planning phases, shared memory, QA coordination,
+worktrees, councils, or orchestration state.
 
 ## Git
 
