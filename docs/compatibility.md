@@ -1,9 +1,9 @@
 # Compatibility Baseline
 
-Auto Mode Gate 0.1.0 is the first public release. The versions below are validated host-contract
-baselines, not broad compatibility claims.
+Auto Mode Gate 0.2.0 adds the Pi permission judge while preserving the deterministic 0.1.0 policy.
+The versions below are validated host-contract baselines, not broad compatibility claims.
 
-| Host | Executed baseline | Pre-execution hook | Published `0.1.0` | Current source |
+| Host | Executed baseline | Pre-execution hook | `0.1.0` | `0.2.0` |
 |-|-|-|-|-|
 | OpenCode | `v1.18.18`, `31406ccc51b4bd2a4e1e086b2bcaa5f7f804f26d` | `tool.execute.before` blocked before a stub effect | All ambiguity blocks | Eligible cases block as judge unavailable |
 | Pi | `v0.84.1`, `53fa77ccd8a279eb87e92294ef3687b03ff80112` | `tool_call` blocked before a stub effect | All ambiguity blocks | Authorized active sessions can use one isolated judge call |
@@ -65,7 +65,7 @@ points.
 Both adapters use the same policy fixtures and reason codes. A host with fewer capabilities must
 never grant broader permission.
 
-Pi confirmation remains unused. The current source instead uses Pi's public model registry for one
+Pi confirmation remains unused. Version 0.2.0 uses Pi's public model registry for one
 isolated call when global configuration authorizes the judge and the current session is active.
 OpenCode has no equivalent verified transport and returns the same fail-closed unavailable code for
 an eligible case.
@@ -78,11 +78,9 @@ an eligible case.
 - OpenCode sessions covered by the loaded plugin use the same hook, but a separately launched host
   process must load the plugin itself.
 - OpenCode's researched pre-tool hook does not include agent identity or an abort signal.
-- Pi 0.84.2 exposes the model-registry transport used by the current source; no equivalent isolated
-  API was verified in OpenCode 1.18.18.
-- The current judge transport is Pi-specific and is not included in published package `0.1.0`.
-- The unreleased `main` manifest is private. `npm pack --dry-run` only previews package contents and
-  displays a `0.1.0` filename; it does not create a tarball or authorize distribution.
+- Pi 0.84.2 exposes the model-registry transport used by version 0.2.0; no equivalent isolated API
+  was verified in OpenCode 1.18.18.
+- The 0.2.0 judge transport is Pi-specific. Package 0.1.0 remains deterministic-only.
 - Only simple literal Git `diff`, `log`, `show`, and `status` requests with a configured exact path
   can become eligible; values, paths, URLs, secrets, host context, and IDs are not transported.
 - Coverage is limited to execution paths proven to pass through the documented hooks.

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.0 - 2026-08-17
+
 - Add an opt-in, session-scoped Pi permission judge for sanitized eligible Git actions.
 - Add monotonic global/project judge configuration, model selection, local deadlines, cancellation, and strict fail-closed output validation.
 - Keep OpenCode judge-eligible actions blocked as unavailable until a public isolated transport is verified.
@@ -11,7 +13,6 @@
 - Freeze argument objects after enforced allowances so later pre-tool handlers cannot replace the reviewed command.
 - Reject malformed or oversized Pi completion shapes and recheck the local deadline after response parsing.
 - Fail closed for explicitly unauthorized adapter judges and asynchronous decision callbacks.
-- Mark the unreleased `main` manifest private to prevent accidental publication as `0.1.0`.
 
 ## 0.1.0 - 2026-08-16
 

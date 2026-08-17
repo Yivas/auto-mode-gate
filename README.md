@@ -1,18 +1,17 @@
 # Auto Mode Gate
 
 Auto Mode Gate is a host-neutral permission gate for OpenCode and Pi. It applies deterministic
-policy before Bash tool calls execute. Version 0.1.0 blocks unknown or ambiguous actions without a
-model judge. The current unreleased source adds an opt-in Pi judge after deterministic analysis and
-sends only a closed sanitized request for an eligible unresolved Git action.
+policy before Bash tool calls execute. Version 0.2.0 adds an opt-in Pi judge after deterministic
+analysis and sends only a closed sanitized request for an eligible unresolved Git action. Version
+0.1.0 remains the deterministic-only release.
 
 ## Status
 
 The core, OpenCode plugin, Pi extension, file-based configuration, sanitized JSONL logs, and
-installation flows are implemented and tested. The current source includes session-scoped Pi judge
-controls and transport; the published package does not. The `main` manifest is marked `private` so
-this unreleased source cannot be published under version `0.1.0`. Version 0.1.0 is published on
+installation flows are implemented and tested. Version 0.2.0 includes session-scoped Pi judge
+controls and transport. It is published on
 [npm](https://www.npmjs.com/package/auto-mode-gate) and
-[GitHub](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.1.0). Read the
+[GitHub](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.2.0). Read the
 [public documentation](https://yivas.github.io/auto-mode-gate/) for the guided installation and
 configuration reference. It supports only the validated baselines:
 
@@ -59,7 +58,7 @@ The recommended setup is to declare the package in the `plugin` array of your pr
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["auto-mode-gate@0.1.0"]
+  "plugin": ["auto-mode-gate@0.2.0"]
 }
 ```
 
@@ -69,7 +68,7 @@ OpenCode resolves configured npm plugins when it starts.
 Alternatively, install it for the current project:
 
 ```text
-opencode plugin auto-mode-gate@0.1.0
+opencode plugin auto-mode-gate@0.2.0
 ```
 
 Add `--global` to install it for every project.
@@ -85,7 +84,7 @@ opencode debug config
 Install globally:
 
 ```text
-pi install npm:auto-mode-gate@0.1.0
+pi install npm:auto-mode-gate@0.2.0
 ```
 
 Add `-l` for a project-local installation. Verify the package entry:
@@ -186,8 +185,7 @@ Global path resolution:
 Configured roots and every file path must be absolute for the current operating system. Relative
 `XDG_CONFIG_HOME` or `APPDATA` values fail closed.
 
-The `permissionJudge` keys below apply to the current unreleased source, not package `0.1.0`.
-Example global configuration:
+The `permissionJudge` keys below require version `0.2.0` or later. Example global configuration:
 
 ```json
 {
@@ -312,10 +310,8 @@ The strict TypeScript check requires external compiler and Node type-definition 
 versions, flags, and command used for the validated baseline are recorded in the private project
 evidence. No broader Node or host compatibility is claimed.
 
-The unreleased `main` manifest has `"private": true`. `npm pack --dry-run` previews package
-contents and displays `auto-mode-gate-0.1.0.tgz`, but it creates no tarball and does not represent a
-new `0.1.0` release. Release preparation requires an approved version bump
-and removal of the private flag in the same reviewed release commit.
+`npm pack --dry-run` previews package contents without creating a tarball. Release artifacts must be
+built from the tagged release commit and inspected before publication.
 
 ## License
 

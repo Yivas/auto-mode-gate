@@ -21,9 +21,9 @@ The full resolution order is:
 
 Configured roots and every file path must be absolute for the current operating system. Relative roots fail closed.
 
-Package `0.1.0` supports the deterministic keys below. The `permissionJudge` block applies only to the current unreleased source.
+Package `0.2.0` supports the deterministic keys and the optional `permissionJudge` block below. Package `0.1.0` does not support that block; adding it makes the strict configuration fail closed.
 
-A global configuration for the current source looks like this:
+A global configuration for version `0.2.0` looks like this:
 
 ```json
 {

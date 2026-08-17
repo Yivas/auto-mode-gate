@@ -13,7 +13,7 @@ hero:
       variant: secondary
 ---
 
-Auto Mode Gate applies one host-neutral policy before a built-in Bash tool call executes. Published version 0.1.0 blocks dangerous and ambiguous actions without invoking a model judge. The current unreleased source adds an opt-in Pi judge for a narrow eligible Git request after deterministic analysis.
+Auto Mode Gate applies one host-neutral policy before a built-in Bash tool call executes. Version 0.2.0 adds an opt-in Pi judge for a narrow eligible Git request after deterministic analysis. Version 0.1.0 remains deterministic-only.
 
 :::caution[Not an operating-system sandbox]
 Auto Mode Gate does not replace native OpenCode or Pi permissions. A separately launched child host must load its own adapter, and coverage is limited to the documented hook paths.
@@ -33,7 +33,7 @@ Auto Mode Gate does not replace native OpenCode or Pi permissions. A separately 
 | `unresolved-ineligible` | Block without a model call. |
 | `unresolved-eligible` | Pi may ask once; OpenCode blocks as unavailable. |
 
-## Pi judge in current source
+## Pi judge in version 0.2.0
 
 Pi sends only closed enums for a configured Git `diff`, `log`, `show`, or `status` candidate. It sends no command text, values, paths, URLs, secrets, history, host context, or IDs. Deterministic decisions, `off`, and `shadow` make zero model calls. Cancellation, deadline, malformed output, tool calls, errors, and unavailable models block. After an enforced allowance, the adapter freezes the reviewed argument object before another pre-tool handler can change it.
 

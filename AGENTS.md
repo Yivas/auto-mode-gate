@@ -7,8 +7,8 @@ and commits must be written in English.
 ## Status and scope
 
 The repository contains the host-neutral permission core, OpenCode and Pi runtime adapters, strict
-file-based configuration, npm and source-install documentation, and tests. Version 0.1.0 is the
-first public release on GitHub and npm.
+file-based configuration, npm and source-install documentation, and tests. Version 0.1.0 was the
+first public release; version 0.2.0 adds the opt-in Pi permission judge.
 
 The product uses the shared core through separate OpenCode and Pi adapters. It must not contain
 multi-agent orchestration, private planning, local profiles, operational prompts, objectives,

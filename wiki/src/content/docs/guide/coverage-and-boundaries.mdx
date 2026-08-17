@@ -28,7 +28,7 @@ The project does not provide an operating-system sandbox, a remote policy servic
 
 ## Permission judge status
 
-Published version 0.1.0 does not invoke a model judge. The current unreleased source supports an opt-in Pi judge through the host's model registry. Its manifest is private until an approved release changes the version and publication metadata. Each Pi session starts off and can use `/amg-judge` to inspect status, toggle the judge, select an available model, or reset to the global default.
+Version 0.2.0 supports an opt-in Pi judge through the host's model registry; version 0.1.0 remains deterministic-only. Each Pi session starts off and can use `/amg-judge` to inspect status, toggle the judge, select an available model, or reset to the global default.
 
 Only closed sanitized Git candidates are eligible. Deterministic decisions, ineligible input, `off`, and `shadow` use zero model calls. Pi failures block before the Bash effect. OpenCode has no equivalent verified transport and blocks eligible cases as unavailable.
 

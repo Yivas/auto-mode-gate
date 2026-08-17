@@ -5,8 +5,8 @@ description: Install the OpenCode plugin or Pi extension from the published npm 
 
 Install the package only after reviewing its source. OpenCode plugins and Pi extensions run with the user's system permissions.
 
-:::note[Published package versus current source]
-Package `0.1.0` contains the deterministic gate and blocks all ambiguity. The opt-in Pi judge is implemented only in the current unreleased source checkout. The `main` manifest is private to prevent publication under the existing version. `npm pack --dry-run` previews contents and a filename, but creates no tarball and authorizes no distribution.
+:::note[Choose the required behavior]
+Package `0.2.0` includes the opt-in Pi judge. Package `0.1.0` remains deterministic-only and blocks all ambiguity.
 :::
 
 ## Install from npm
@@ -18,7 +18,7 @@ The recommended setup is to declare the package in the `plugin` array of your pr
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["auto-mode-gate@0.1.0"]
+  "plugin": ["auto-mode-gate@0.2.0"]
 }
 ```
 
@@ -27,7 +27,7 @@ Merge that entry into an existing `plugin` array without removing other plugins 
 Alternatively, install it for the current project:
 
 ```text
-opencode plugin auto-mode-gate@0.1.0
+opencode plugin auto-mode-gate@0.2.0
 ```
 
 Add `--global` to install it for every project.
@@ -45,7 +45,7 @@ The resolved `plugin` list must contain the Auto Mode Gate entry.
 Install globally:
 
 ```text
-pi install npm:auto-mode-gate@0.1.0
+pi install npm:auto-mode-gate@0.2.0
 ```
 
 Add `-l` for a project-local installation. Verify the package entry:
