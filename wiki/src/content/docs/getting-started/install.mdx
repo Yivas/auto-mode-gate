@@ -1,0 +1,123 @@
+---
+title: Install Auto Mode Gate
+description: Install the OpenCode plugin or Pi extension from the published npm package or a checkout.
+---
+
+Install the package only after reviewing its source. OpenCode plugins and Pi extensions run with the user's system permissions.
+
+## Install from npm
+
+### OpenCode
+
+Install for the current project:
+
+```text
+opencode plugin auto-mode-gate@0.1.0
+```
+
+Add `--global` to install it for every project. Verify the resolved plugin list:
+
+```text
+opencode debug config
+```
+
+The resolved `plugin` list must contain the Auto Mode Gate entry.
+
+### Pi
+
+Install globally:
+
+```text
+pi install npm:auto-mode-gate@0.1.0
+```
+
+Add `-l` for a project-local installation. Verify the package entry:
+
+```text
+pi list
+```
+
+## Install from a checkout
+
+The source loader flow uses one small loader file and does not edit host settings. Run the commands from the checkout root, keep the checkout at the same path, and restart the host after installing the loader.
+
+### OpenCode source loader
+
+```powershell
+$scope = "project"
+$targetProject = "C:\path\to\project"
+$source = [System.Uri]::new((Resolve-Path .\src\opencode-runtime.ts).Path).AbsoluteUri
+$pluginRoot = if ($scope -eq "project") {
+  Join-Path (Resolve-Path $targetProject).Path ".opencode\plugins"
+} elseif ($env:OPENCODE_CONFIG_DIR) {
+  Join-Path $env:OPENCODE_CONFIG_DIR "plugins"
+} else {
+  Join-Path $HOME ".config\opencode\plugins"
+}
+New-Item -ItemType Directory -Force $pluginRoot | Out-Null
+"export { AutoModeGatePlugin } from `"$source`";" |
+  Set-Content -Encoding utf8 (Join-Path $pluginRoot "auto-mode-gate.ts")
+```
+
+Verify discovery:
+
+```powershell
+if ($scope -eq "project") {
+  Push-Location $targetProject
+  try { opencode debug config } finally { Pop-Location }
+} else {
+  opencode debug config
+}
+```
+
+### Pi source loader
+
+```powershell
+$scope = "project"
+$targetProject = "C:\path\to\project"
+$source = [System.Uri]::new((Resolve-Path .\src\pi-runtime.ts).Path).AbsoluteUri
+$extensionRoot = if ($scope -eq "project") {
+  Join-Path (Resolve-Path $targetProject).Path ".pi\extensions\auto-mode-gate"
+} elseif ($env:PI_CODING_AGENT_DIR) {
+  Join-Path $env:PI_CODING_AGENT_DIR "extensions\auto-mode-gate"
+} else {
+  Join-Path $HOME ".pi\agent\extensions\auto-mode-gate"
+}
+New-Item -ItemType Directory -Force $extensionRoot | Out-Null
+"export { default } from `"$source`";" |
+  Set-Content -Encoding utf8 (Join-Path $extensionRoot "index.ts")
+```
+
+Pi loads project extensions after the project is trusted. A startup-only check that does not contact model providers is:
+
+```powershell
+if ($scope -eq "project") {
+  Push-Location $targetProject
+  try { pi --offline --list-models } finally { Pop-Location }
+} else {
+  pi --offline --list-models
+}
+```
+
+## Remove an installation
+
+For npm installations, remove the package with the same scope used to install it:
+
+```text
+pi remove npm:auto-mode-gate
+pi remove npm:auto-mode-gate -l
+```
+
+OpenCode 1.18.18 has no plugin removal subcommand. Use `opencode debug config`, remove only the matching Auto Mode Gate plugin item from its resolved configuration, restart OpenCode, and confirm that the plugin no longer appears.
+
+For a source installation, delete only the loader created for Auto Mode Gate:
+
+```powershell
+Remove-Item <plugin-root>\auto-mode-gate.ts
+Remove-Item -Recurse <extension-root>\auto-mode-gate
+```
+
+## Next steps
+
+- [Configure the gate](./configure/).
+- [Verify and operate it](../guide/verify-and-operate/).

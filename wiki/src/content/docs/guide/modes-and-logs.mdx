@@ -1,0 +1,39 @@
+---
+title: Modes and sanitized logs
+description: Choose enforcement behavior and understand what decision logs contain.
+---
+
+The same policy can run in three modes. Logging is optional, and log records deliberately exclude commands, arguments, prompts, context, secrets, session IDs, call IDs, and persistent identifiers.
+
+## Modes
+
+| Mode | Behavior |
+|-|-|
+| `enforce` | Denied actions block. |
+| `shadow` | Policy and logs run, but actions do not block. |
+| `off` | The adapter remains loaded but does not block. |
+
+`shadow` is an observation mode, not a security control. A project can tighten `shadow` to `enforce`, but it cannot relax a global `enforce` setting or activate a globally disabled gate.
+
+## Log records
+
+When the global file contains an absolute `logPath`, each JSONL record contains only:
+
+- host, tool, and shell enums;
+- policy verdict, final effect, and stable decision code;
+- deterministic source, mode, and blocked state;
+- an in-memory repeated-rejection count.
+
+The rejection tracker keeps at most 1,024 counts in memory. Its hash is not returned or written to the log.
+
+## Log failures
+
+If an `enforce` decision cannot be written to the configured log file, the tool call blocks with `AMG_DENY_INTERNAL_ERROR`. Logging is disabled when `logPath` is absent.
+
+The adapter does not turn a log failure into silent success. This is part of the fail-closed behavior at the logging boundary.
+
+## Next steps
+
+- [Configure a mode and log path](../getting-started/configure/).
+- [Verify host operation](./verify-and-operate/).
+- [Review coverage boundaries](./coverage-and-boundaries/).

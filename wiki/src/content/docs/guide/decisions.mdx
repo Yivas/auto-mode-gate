@@ -1,0 +1,56 @@
+---
+title: Understand decisions
+description: Learn how deterministic rules classify safe, dangerous, and ambiguous Bash calls.
+---
+
+Auto Mode Gate applies deterministic rules before any future model judge. Version 0.1.0 does not invoke a model judge; every ambiguous result blocks.
+
+## Decision flow
+
+```text
+action
+└─ deterministic policy
+   ├─ safe      -> continue
+   ├─ dangerous -> block
+   └─ ambiguous -> block
+```
+
+The core returns a structured decision. The adapter then converts a blocked decision into the host-specific denial behavior.
+
+## Safe is narrow
+
+A read-only allowance requires all of the following:
+
+- one supported simple Bash, PowerShell, or CMD command;
+- an exact absolute executable path at the start of the command;
+- that exact path in the global trusted-path list;
+- matching executable evidence supplied by the adapter;
+- no unsupported operators, redirections, substitutions, expansions, or malformed input.
+
+Bare command names, shell builtins, relative paths, and unconfigured absolute paths remain ambiguous. The gate does not resolve `PATH` or rewrite a command to manufacture executable identity.
+
+## Dangerous and ambiguous
+
+Known mutating or process-launching commands remain denied without requiring resolution evidence. Operators, redirections, substitutions, expansions, unsupported commands, missing evidence, and malformed input are ambiguous and fail closed.
+
+The deterministic precedence is:
+
+1. Internal evaluation error.
+2. Unknown action or shell.
+3. Missing, truncated, oversized, or malformed input.
+4. Explicit dangerous command or option.
+5. Missing or mismatched executable identity.
+6. Unsupported or ambiguous syntax.
+7. Narrow safe-command allowance.
+
+Every result other than `allow` has a stable denial code. Ambiguous actions use `AMG_DENY_AMBIGUOUS` and a final `deny` effect.
+
+## No model override
+
+A later permission judge may be considered only after both hosts have a tested, isolated transport with authentication, cancellation, timeout, recursion prevention, and strict output validation. It will never override a deterministic denial.
+
+## Next steps
+
+- [Configure trusted paths](../getting-started/configure/).
+- [Review modes and sanitized logs](./modes-and-logs/).
+- [Read the technical architecture](https://github.com/Yivas/auto-mode-gate/blob/main/docs/architecture.md).

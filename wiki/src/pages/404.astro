@@ -1,0 +1,19 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+
+const homeUrl = `${import.meta.env.BASE_URL}/`;
+---
+
+<StarlightPage
+  frontmatter={{
+    title: 'Page not found',
+    description: 'The requested Auto Mode Gate documentation page does not exist.',
+    editUrl: false,
+  }}
+>
+  <p>The page you requested is not part of this documentation site.</p>
+  <p>
+    <a href={homeUrl}>Return to the Auto Mode Gate documentation</a> or
+    <a href="https://github.com/Yivas/auto-mode-gate/issues">report a problem on GitHub</a>.
+  </p>
+</StarlightPage>

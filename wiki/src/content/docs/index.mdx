@@ -1,0 +1,44 @@
+---
+title: Auto Mode Gate
+description: Deterministic Bash permission gate for OpenCode and Pi.
+template: splash
+hero:
+  title: Deterministic Bash permission gate for OpenCode and Pi
+  tagline: Inspect the action first, then allow a narrow safe path or block everything uncertain.
+  actions:
+    - text: Install
+      link: ./getting-started/install/
+      variant: primary
+    - text: Understand decisions
+      link: ./guide/decisions/
+      variant: secondary
+---
+
+Auto Mode Gate applies one host-neutral policy before a built-in Bash tool call executes. Version 0.1.0 blocks dangerous and ambiguous actions without invoking a model judge.
+
+:::caution[Not an operating-system sandbox]
+Auto Mode Gate does not replace native OpenCode or Pi permissions. A separately launched child host must load its own adapter, and coverage is limited to the documented hook paths.
+:::
+
+## How a decision works
+
+1. The host adapter normalizes the Bash call and its available evidence.
+2. The shared core applies deterministic rules.
+3. A safe, exact trusted-path read may continue; dangerous or ambiguous input blocks.
+
+| Result | Effect |
+|-|-|
+| `safe` | Continue when the exact configured executable path is trusted. |
+| `dangerous` | Block before the host executes the call. |
+| `ambiguous` | Block because the evidence or syntax is not sufficient. |
+
+## Choose a path
+
+- [Install the package](./getting-started/install/) for OpenCode or Pi.
+- [Configure the gate](./getting-started/configure/) with a global file and optional project tightening.
+- [Understand the decision rules](./guide/decisions/) before trusting a path.
+- [Check validated baselines](./reference/validated-baselines/) before claiming compatibility.
+
+## What this project protects
+
+The gate is deliberately narrow. It does not execute commands, contact a network service, persist command text, or replace the host's native permissions. It records only sanitized decision metadata when logging is configured.

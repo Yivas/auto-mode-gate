@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <title>Auto Mode Gate</title>
+  <rect width="32" height="32" rx="7" fill="#1e3a8a"/>
+  <path d="M9 7.5h14v17H9zM16 7.5v17" fill="none" stroke="#dbeafe" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"/>
+  <circle cx="19.5" cy="16" r="1.5" fill="#60a5fa"/>
+</svg>

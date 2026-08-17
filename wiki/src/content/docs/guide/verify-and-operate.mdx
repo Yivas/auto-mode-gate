@@ -1,0 +1,56 @@
+---
+title: Verify and operate
+description: Confirm installation, understand host scope, and keep native permissions in place.
+---
+
+OpenCode and Pi activate independently through their package entries or source loader files. Removing one installation leaves the other host unchanged.
+
+## Verify OpenCode
+
+After installing the plugin, inspect the resolved configuration:
+
+```text
+opencode debug config
+```
+
+The resolved `plugin` list must contain the Auto Mode Gate entry. Restart OpenCode after configuration changes.
+
+## Verify Pi
+
+After installing the package, inspect the installed package list:
+
+```text
+pi list
+```
+
+Pi 0.84.1 lists installed packages in `pi list`; it does not list auto-discovered extension files there. A source installation can be checked without contacting model providers:
+
+```text
+pi --offline --list-models
+```
+
+## What is enforced
+
+Both adapters enforce calls to their built-in `bash` tool. Other tools remain under native host permissions. The shared conformance suite exercises the same policy corpus for both hosts.
+
+A child process must load its own adapter. The hooks do not guarantee that a separately launched child host loaded the gate.
+
+## What happens after an allowance
+
+An allowance means that the Auto Mode Gate policy did not block the call. Native OpenCode or Pi permissions still apply after that decision. Passing the gate does not bypass or replace host permissions.
+
+## Useful checks
+
+Run the project test suite from the repository root:
+
+```text
+npm test
+```
+
+The published package documents only the validated OpenCode, Pi, and Node baselines. Do not infer broader compatibility from a successful local run.
+
+## Next steps
+
+- [Review the decision rules](./decisions/).
+- [Understand modes and logs](./modes-and-logs/).
+- [Read coverage boundaries](./coverage-and-boundaries/).

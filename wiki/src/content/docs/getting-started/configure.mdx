@@ -1,0 +1,78 @@
+---
+title: Configure the gate
+description: Configure global policy, trusted executable paths, and optional project tightening.
+---
+
+Auto Mode Gate reads one global JSON file and, when present, `.auto-mode-gate.json` from the project root. Each host adapter reads configuration when it starts, so restart or reload the host after changing a file.
+
+## Global configuration
+
+On Windows, the default global path is:
+
+```text
+%APPDATA%\auto-mode-gate\config.json
+```
+
+The full resolution order is:
+
+1. `$XDG_CONFIG_HOME/auto-mode-gate/config.json` when `XDG_CONFIG_HOME` is set.
+2. `%APPDATA%\auto-mode-gate\config.json` on Windows.
+3. `~/.config/auto-mode-gate/config.json` elsewhere.
+
+Configured roots and every file path must be absolute for the current operating system. Relative roots fail closed.
+
+A minimal global configuration looks like this:
+
+```json
+{
+  "mode": "enforce",
+  "shell": "powershell",
+  "trustedExecutablePaths": [
+    "C:\\Windows\\System32\\where.exe"
+  ]
+}
+```
+
+| Key | Values | Meaning |
+|-|-|-|
+| `mode` | `off`, `shadow`, `enforce` | Controls whether denied actions block. Defaults to `enforce`. |
+| `shell` | `bash`, `powershell`, `cmd` | Required before a Bash call can be allowed. |
+| `trustedExecutablePaths` | Absolute path array | Exact authority for narrow read-only allowances. |
+| `logPath` | Absolute file path | Optional sanitized JSONL decision log. |
+
+Create the log directory before starting the host when `logPath` is configured.
+
+## Project configuration
+
+Project configuration accepts only `mode` and `trustedExecutablePaths`:
+
+```json
+{
+  "mode": "enforce",
+  "trustedExecutablePaths": [
+    "C:\\Windows\\System32\\where.exe"
+  ]
+}
+```
+
+A project can tighten `shadow` to `enforce` and remove trusted paths. It cannot enable a globally `off` gate, relax `enforce`, set the shell, add trust absent from the global file, or set a log path.
+
+Unknown keys, invalid JSON, relative paths, and unreadable files fail closed.
+
+## Modes
+
+- `enforce`: denied actions block.
+- `shadow`: policy and logs run, but actions do not block.
+- `off`: the adapter remains loaded but does not block.
+
+`shadow` is an observation mode, not a security control.
+
+## Configuration failures
+
+Missing shell evidence, malformed input, malformed configuration, unsupported syntax, and internal errors fail closed. The gate does not resolve `PATH` or rewrite commands to manufacture executable identity.
+
+## Next steps
+
+- [Understand the decision rules](../guide/decisions/).
+- [Review modes and sanitized logs](../guide/modes-and-logs/).
+- [Check the validated host baselines](../reference/validated-baselines/).

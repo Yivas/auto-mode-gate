@@ -1,0 +1,37 @@
+---
+title: Coverage and boundaries
+description: Know what the gate covers, what it deliberately excludes, and where native host permissions still apply.
+---
+
+Auto Mode Gate is a pre-tool policy gate, not an operating-system sandbox. Its guarantees are intentionally limited to execution paths proven to pass through the documented OpenCode and Pi hooks.
+
+## Host coverage
+
+- OpenCode uses `tool.execute.before` for the validated 1.18.18 baseline.
+- Pi uses `tool_call` for the validated 0.84.1 baseline.
+- Both adapters enforce only the built-in `bash` tool.
+- Other tools remain under native host permissions.
+
+A separately launched host process must load its own adapter. The hooks do not provide verified child-process identity or guarantee that a child loaded the gate.
+
+## Evidence and identity
+
+The adapters require explicit shell evidence and an exact absolute executable path for narrow safe allowances. They do not infer agent or subagent identity, session ancestry, objectives, recent actions, or arguments that the host does not provide.
+
+A trusted path is configuration authority, not an immutable file handle. Replacing a trusted file between policy evaluation and execution remains outside the hook contract.
+
+## No sandbox or remote service
+
+The shared core does not execute commands, display UI, contact a network service, or persist state. It analyzes normalized input and returns a decision. Native host permissions still apply after an allowance.
+
+The project does not provide an operating-system sandbox, a remote policy service, or a replacement for native host permissions.
+
+## No model judge in v1
+
+Version 0.1.0 does not define or invoke a model judge. Pi exposes a host-native model call, but no equivalent safe OpenCode API or host-neutral transport was verified. The core therefore converts every ambiguous result into a denial with a stable reason code.
+
+## Next steps
+
+- [Check the validated baselines](../reference/validated-baselines/).
+- [Understand decisions](./decisions/).
+- [Read the technical compatibility record](https://github.com/Yivas/auto-mode-gate/blob/main/docs/compatibility.md).

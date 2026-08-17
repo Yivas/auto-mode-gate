@@ -1,0 +1,44 @@
+---
+title: Validated baselines
+description: Versions exercised by the public release and the limits of those compatibility claims.
+---
+
+The versions below are validated host-contract baselines, not broad compatibility claims. A future support claim requires a new isolated verification cycle.
+
+## Executed baselines
+
+| Component | Validated baseline | Evidence |
+|-|-|-|
+| OpenCode | `v1.18.18` | `tool.execute.before` blocked before a stub effect. |
+| Pi | `v0.84.1` | `tool_call` blocked before a stub effect. |
+| Node.js test suite | `24.9.0` | Root unit, runtime, integration, and conformance tests. |
+
+Pi `v0.84.2` at commit `914cf1472e715297caa30db4b9535d534a9eb718` remains a static research baseline. It was not installed or executed during the isolated probes.
+
+## What the tests cover
+
+The source-level adapter suite replays the shared policy corpus for both hosts. Host doubles assert that OpenCode throws and Pi returns a blocking result before a stub effect, that allowed Bash calls already contain the exact trusted path evaluated by the core, and that `shadow`, `off`, and project configuration preserve the core's restrictions.
+
+Runtime tests separately exercise configuration precedence, sanitized logs, malformed configuration, log-write failure, source loading, and removal behavior through both host entry points.
+
+## Before claiming support
+
+A supported release must repeat isolated integration tests that prove:
+
+- the hook blocks before a stub side effect;
+- timeout and error paths fail closed;
+- configuration does not overwrite user files;
+- removal leaves unrelated configuration unchanged.
+
+Source-profile results do not authorize a package release or broader compatibility claim.
+
+## Technical evidence
+
+- [Full compatibility record](https://github.com/Yivas/auto-mode-gate/blob/main/docs/compatibility.md).
+- [Architecture and boundaries](https://github.com/Yivas/auto-mode-gate/blob/main/docs/architecture.md).
+- [Upstream provenance](https://github.com/Yivas/auto-mode-gate/blob/main/docs/upstream.md).
+
+## Next steps
+
+- [Install the validated package](../getting-started/install/).
+- [Verify and operate the gate](../guide/verify-and-operate/).

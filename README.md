@@ -9,8 +9,9 @@ model judge.
 The core, OpenCode plugin, Pi extension, file-based configuration, sanitized JSONL logs, and
 installation flows are implemented and tested. Version 0.1.0 is published on
 [npm](https://www.npmjs.com/package/auto-mode-gate) and
-[GitHub](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.1.0). It supports only the
-validated baselines:
+[GitHub](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.1.0). Read the
+[public documentation](https://yivas.github.io/auto-mode-gate/) for the guided installation and
+configuration reference. It supports only the validated baselines:
 
 - OpenCode 1.18.18;
 - Pi 0.84.1;
