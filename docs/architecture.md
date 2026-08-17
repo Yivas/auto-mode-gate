@@ -9,10 +9,14 @@ host tool call
 └─ host adapter
    ├─ normalize available action and context
    └─ shared core
-      ├─ deterministic allow, deny, or ambiguous
-      ├─ fail-closed denial for ambiguous actions
-      ├─ repeated-rejection tracking
-      └─ structured decision and sanitized log record
+      ├─ deterministic assessment
+      │  ├─ allow-final
+      │  ├─ deny-final
+      │  └─ unresolved-ineligible
+      └─ single finalization
+         ├─ fail-closed denial for unresolved actions
+         ├─ repeated-rejection tracking
+         └─ structured decision and sanitized log record
    └─ host enforcement
       ├─ allow: continue
       └─ deny: block
@@ -20,9 +24,9 @@ host tool call
 
 ## Shared core
 
-`src/` contains plain TypeScript with no OpenCode, Pi, or model-provider imports. It analyzes a
-normalized action and returns a decision; it does not execute commands, display UI, contact a
-network service, or persist state.
+`src/` contains plain TypeScript with no OpenCode, Pi, or model-provider imports. It assesses a
+normalized action, then finalizes its effect, rejection count, code, denial, and sanitized log once.
+It does not execute commands, display UI, contact a network service, or persist state.
 
 The shell analyzer accepts one simple Bash, PowerShell, or CMD command. It rejects malformed input
 and treats operators, redirections, substitutions, expansions, untrusted executable paths, and
@@ -43,8 +47,9 @@ Deterministic precedence is:
 6. unsupported or ambiguous syntax;
 7. narrow safe-command allowance.
 
-Every result other than `allow` has a stable denial code. `ambiguous` uses
-`AMG_DENY_AMBIGUOUS` and has a final `deny` effect.
+Every result other than `allow` has a stable denial code. Current ambiguous input becomes
+`unresolved-ineligible`, then finalizes as `AMG_DENY_AMBIGUOUS` with a `deny` effect. No assessment
+is eligible for a judge yet.
 
 The rejection tracker hashes an equivalence key and keeps at most 1,024 counts in memory. The hash
 is not returned or written to the log. Log records contain only normalized enums, the stable code,
@@ -109,12 +114,14 @@ decision and execution, so replacement of a trusted file remains outside this ga
 
 ## Deferred permission judge
 
-V1 does not define or invoke a model judge. Isolated probes found a Pi-specific model call, but no
-equivalent safe OpenCode API or host-neutral transport was verified. The core therefore converts
-every ambiguous result into a denial with a stable reason code.
+The core defines inert, host-neutral types for judge requests, responses, outcomes, eligibility,
+source, and stable future codes. It does not construct a request or invoke a model judge. The
+request type fixes only the protocol marker until sanitization defines a closed payload. Isolated
+probes found a Pi-specific model call, but no equivalent safe OpenCode API or host-neutral transport
+was verified.
 
-The target design adds a user-selected model after both hosts have a tested transport with tool
-isolation, recursion prevention, authentication, cancellation, timeout, and strict output
+A later phase will add a user-selected model after sanitization and host transport have tests for
+tool isolation, recursion prevention, authentication, cancellation, timeout, and strict output
 validation. Deterministic allowances and denials skip the model. Only eligible unresolved cases
 receive minimal normalized context, and a judge will never override a deterministic denial.
 

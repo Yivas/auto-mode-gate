@@ -2,8 +2,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { AutoModeGate, mergeConfig } from "../src/index.ts";
-import type { GateConfig } from "../src/index.ts";
+import { AutoModeGate, RejectionTracker, mergeConfig } from "../src/index.ts";
+import type {
+  GateConfig,
+  PermissionAssessment,
+  PermissionJudgeDecisionCode,
+  PermissionJudgeDecisionSource,
+} from "../src/index.ts";
 
 interface Fixture {
   readonly name: string;
@@ -69,6 +74,94 @@ test("ambiguous decisions become structured denials", () => {
     code: "AMG_DENY_AMBIGUOUS",
     message: "The command could not be classified as safe.",
   });
+});
+
+test("the judge contract keeps current decision results unchanged", () => {
+  const contract = [
+    { state: "allow-final", policyVerdict: "allow" },
+    { state: "deny-final", policyVerdict: "deny" },
+    {
+      state: "unresolved-ineligible",
+      policyVerdict: "ambiguous",
+      eligibility: { state: "ineligible" },
+    },
+    {
+      state: "unresolved-eligible",
+      policyVerdict: "ambiguous",
+      eligibility: {
+        state: "eligible",
+        request: { protocol: "amg-permission-judge/v1" },
+      },
+    },
+  ] satisfies readonly PermissionAssessment[];
+  const judgeCodes = [
+    "AMG_ALLOW_JUDGE",
+    "AMG_DENY_JUDGE",
+    "AMG_DENY_JUDGE_UNAVAILABLE",
+    "AMG_DENY_JUDGE_TIMEOUT",
+    "AMG_DENY_JUDGE_CANCELLED",
+    "AMG_DENY_JUDGE_INVALID_RESPONSE",
+    "AMG_DENY_JUDGE_ERROR",
+  ] satisfies readonly PermissionJudgeDecisionCode[];
+  const judgeSource = "judge" satisfies PermissionJudgeDecisionSource;
+
+  assert.deepEqual(contract.map((assessment) => assessment.state), [
+    "allow-final",
+    "deny-final",
+    "unresolved-ineligible",
+    "unresolved-eligible",
+  ]);
+  assert.equal(judgeCodes.length, 7);
+  assert.equal(judgeSource, "judge");
+
+  const decision = new AutoModeGate().evaluate({
+    kind: "shell",
+    tool: "shell",
+    shell: "bash",
+    command: "custom-tool inspect",
+  });
+  assert.deepEqual(
+    {
+      policyVerdict: decision.policyVerdict,
+      effect: decision.effect,
+      code: decision.code,
+      source: decision.source,
+      blocked: decision.blocked,
+    },
+    {
+      policyVerdict: "ambiguous",
+      effect: "deny",
+      code: "AMG_DENY_AMBIGUOUS",
+      source: "deterministic",
+      blocked: true,
+    },
+  );
+  assert.equal("assessmentState" in decision, false);
+});
+
+test("finalization records each rejection once", () => {
+  class CountingTracker extends RejectionTracker {
+    calls = 0;
+
+    override record(equivalenceInput: string, code: Parameters<RejectionTracker["record"]>[1]) {
+      this.calls += 1;
+      return super.record(equivalenceInput, code);
+    }
+  }
+
+  const tracker = new CountingTracker();
+  const gate = new AutoModeGate({ mode: "enforce" }, tracker);
+
+  gate.evaluate({ kind: "shell", tool: "shell", shell: "bash", command: "rm file" });
+  gate.evaluate({ kind: "shell", tool: "shell", shell: "bash", command: "custom-tool inspect" });
+  gate.evaluate({ kind: "shell", tool: "shell", shell: "bash", command: "" });
+
+  const unreadable = new Proxy({}, { get: () => { throw new Error("unreadable input"); } });
+  const internalError = gate.evaluate(unreadable);
+
+  assert.equal(tracker.calls, 3);
+  assert.equal(internalError.code, "AMG_DENY_INTERNAL_ERROR");
+  assert.equal(internalError.repeatedRejectionCount, 0);
 });
 
 test("every denial code has a stable structured message", () => {

@@ -3,12 +3,13 @@ import { createHash } from "node:crypto";
 import { normalizeExecutableName, parseShellCommand } from "./shell.ts";
 import type {
   DecisionCode,
+  DeterministicDecisionCode,
   GateConfig,
   GateDecision,
   GateMode,
   KnownHost,
   NormalizedShellAction,
-  PolicyVerdict,
+  PermissionAssessment,
   Shell,
   StructuredDenial,
   VerifiedExecutable,
@@ -153,12 +154,11 @@ const dangerousFindOptions = new Set([
   "-okdir",
 ]);
 
-interface Classification {
-  readonly verdict: PolicyVerdict;
-  readonly code: DecisionCode;
+type InternalAssessment = PermissionAssessment & {
+  readonly code: DeterministicDecisionCode;
   readonly action?: NormalizedShellAction;
   readonly equivalenceInput: string;
-}
+};
 
 interface InputSnapshot {
   readonly kind: unknown;
@@ -204,30 +204,32 @@ export class AutoModeGate {
 
   evaluate(input: unknown): GateDecision {
     try {
-      return this.#createDecision(classify(input, this.#trustedExecutablePaths));
+      const assessment = assess(input, this.#trustedExecutablePaths);
+      return this.#finalize(assessment);
     } catch {
       return createInternalErrorDecision(this.#mode);
     }
   }
 
-  #createDecision(classification: Classification): GateDecision {
-    const effect = classification.verdict === "allow" ? "allow" : "deny";
+  #finalize(assessment: InternalAssessment): GateDecision {
+    const effect = assessment.state === "allow-final" ? "allow" : "deny";
     const blocked = effect === "deny" && this.#mode === "enforce";
     const repeatedRejectionCount =
       effect === "deny"
-        ? this.#tracker.record(classification.equivalenceInput, classification.code)
+        ? this.#tracker.record(assessment.equivalenceInput, assessment.code)
         : 0;
-    const denial = effect === "deny" ? createDenial(classification.code) : undefined;
-    const host = normalizeHost(classification.action?.host);
-    const shell = classification.action?.shell ?? "unknown";
-    const tool = classification.action?.tool ?? "unknown";
+    const denial =
+      assessment.code === "AMG_ALLOW_SAFE_COMMAND" ? undefined : createDenial(assessment.code);
+    const host = normalizeHost(assessment.action?.host);
+    const shell = assessment.action?.shell ?? "unknown";
+    const tool = assessment.action?.tool ?? "unknown";
     const log = Object.freeze({
       host,
       tool,
       shell,
-      policyVerdict: classification.verdict,
+      policyVerdict: assessment.policyVerdict,
       effect,
-      code: classification.code,
+      code: assessment.code,
       source: "deterministic",
       mode: this.#mode,
       blocked,
@@ -235,9 +237,9 @@ export class AutoModeGate {
     });
 
     return Object.freeze({
-      policyVerdict: classification.verdict,
+      policyVerdict: assessment.policyVerdict,
       effect,
-      code: classification.code,
+      code: assessment.code,
       source: "deterministic",
       mode: this.#mode,
       blocked,
@@ -273,7 +275,7 @@ export function mergeConfig(globalConfig: GateConfig, projectConfig?: Partial<Ga
   }
 }
 
-function classify(input: unknown, trustedExecutablePaths: ReadonlySet<string>): Classification {
+function assess(input: unknown, trustedExecutablePaths: ReadonlySet<string>): InternalAssessment {
   if (!isRecord(input)) {
     return rejectUnknown(input);
   }
@@ -286,7 +288,8 @@ function classify(input: unknown, trustedExecutablePaths: ReadonlySet<string>): 
   const executableIdentity = readExecutableIdentity(snapshot.executable);
   if (executableIdentity === null) {
     return {
-      verdict: "deny",
+      state: "deny-final",
+      policyVerdict: "deny",
       code: "AMG_DENY_INVALID_INPUT",
       equivalenceInput: safeEquivalenceInput(snapshot),
     };
@@ -309,7 +312,8 @@ function classify(input: unknown, trustedExecutablePaths: ReadonlySet<string>): 
     action.truncated === true
   ) {
     return {
-      verdict: "deny",
+      state: "deny-final",
+      policyVerdict: "deny",
       code: "AMG_DENY_INVALID_INPUT",
       action,
       equivalenceInput: safeEquivalenceInput(action),
@@ -319,7 +323,8 @@ function classify(input: unknown, trustedExecutablePaths: ReadonlySet<string>): 
   const parsed = parseShellCommand(action.shell, action.command);
   if (parsed.status === "invalid") {
     return {
-      verdict: "deny",
+      state: "deny-final",
+      policyVerdict: "deny",
       code: "AMG_DENY_INVALID_INPUT",
       action,
       equivalenceInput: safeEquivalenceInput(action),
@@ -373,45 +378,49 @@ function classify(input: unknown, trustedExecutablePaths: ReadonlySet<string>): 
   return ambiguous(action);
 }
 
-function allowed(action: NormalizedShellAction): Classification {
+function allowed(action: NormalizedShellAction): InternalAssessment {
   return {
-    verdict: "allow",
+    state: "allow-final",
+    policyVerdict: "allow",
     code: "AMG_ALLOW_SAFE_COMMAND",
     action,
     equivalenceInput: safeEquivalenceInput(action),
   };
 }
 
-function dangerous(action: NormalizedShellAction): Classification {
+function dangerous(action: NormalizedShellAction): InternalAssessment {
   return {
-    verdict: "deny",
+    state: "deny-final",
+    policyVerdict: "deny",
     code: "AMG_DENY_DANGEROUS_COMMAND",
     action,
     equivalenceInput: safeEquivalenceInput(action),
   };
 }
 
-function ambiguous(action: NormalizedShellAction): Classification {
+function ambiguous(action: NormalizedShellAction): InternalAssessment {
   return {
-    verdict: "ambiguous",
+    state: "unresolved-ineligible",
+    policyVerdict: "ambiguous",
+    eligibility: Object.freeze({ state: "ineligible" }),
     code: "AMG_DENY_AMBIGUOUS",
     action,
     equivalenceInput: safeEquivalenceInput(action),
   };
 }
 
-function rejectUnknown(input: unknown): Classification {
+function rejectUnknown(input: unknown): InternalAssessment {
   return {
-    verdict: "deny",
+    state: "deny-final",
+    policyVerdict: "deny",
     code: "AMG_DENY_UNKNOWN_ACTION",
     equivalenceInput: safeEquivalenceInput(input),
   };
 }
 
-function createDenial(code: DecisionCode): StructuredDenial {
-  if (code === "AMG_ALLOW_SAFE_COMMAND") {
-    throw new Error("An allow decision cannot create a denial.");
-  }
+function createDenial(
+  code: Exclude<DecisionCode, "AMG_ALLOW_SAFE_COMMAND">,
+): StructuredDenial {
   return Object.freeze({ code, message: messages[code] });
 }
 
