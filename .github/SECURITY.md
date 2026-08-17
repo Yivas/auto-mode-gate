@@ -2,8 +2,8 @@
 
 ## Supported versions
 
-Only the latest published version receives security fixes. Security support covers both runtime
-adapters at their validated host baselines.
+Only the latest published Auto Mode Gate version receives security fixes. Security support covers
+both runtime adapters at their validated host baselines.
 
 | Component | Supported baseline |
 |-|-|
@@ -11,17 +11,32 @@ adapters at their validated host baselines.
 | OpenCode adapter | OpenCode 1.18.18 |
 | Pi adapter | Pi 0.84.1 |
 
+Review the [compatibility baseline](../docs/compatibility.md) before reporting behavior outside the
+supported hook paths or host versions. Auto Mode Gate is a pre-tool policy gate, not an
+operating-system sandbox.
+
 ## Report a vulnerability
 
 Use [GitHub private vulnerability reporting](https://github.com/Yivas/auto-mode-gate/security/advisories/new).
-Do not open a public issue for an undisclosed vulnerability.
+Private vulnerability reporting is enabled for this repository. Do not open a public issue for an
+undisclosed vulnerability.
 
-Include the affected version, host and operating system, reproduction steps, expected behavior, and
-observed behavior. Remove credentials, prompts, commands, logs, paths, and other private data before
-submitting evidence.
+Include:
 
-Auto Mode Gate is a pre-tool policy gate, not an operating-system sandbox. Review the documented
-limits in [`docs/compatibility.md`][compatibility] before reporting behavior that falls outside the
-supported hook paths or host baselines.
+- the affected Auto Mode Gate version;
+- the host and host version;
+- the operating system;
+- the smallest sanitized reproduction you can provide;
+- the expected and observed behavior;
+- the security impact and any known workaround.
 
-[compatibility]: https://github.com/Yivas/auto-mode-gate/blob/main/docs/compatibility.md
+Remove credentials, tokens, prompts, identifiers, active configuration values, and other private
+data. Redact private values inside commands, logs, and paths instead of removing the technical
+detail needed to reproduce the problem.
+
+## What happens after a report
+
+The maintainer will review the report, reproduce it when possible, and may ask for more sanitized
+evidence. If the report is valid, the maintainer will coordinate a fix and public disclosure through
+the private advisory. Do not disclose the vulnerability publicly before that coordination is
+complete.
