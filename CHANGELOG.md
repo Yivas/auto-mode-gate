@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add an opt-in, session-scoped Pi permission judge for sanitized eligible Git actions.
+- Add monotonic global/project judge configuration, model selection, local deadlines, cancellation, and strict fail-closed output validation.
+- Keep OpenCode judge-eligible actions blocked as unavailable until a public isolated transport is verified.
 - Fail closed when OpenCode or Pi omits the project directory required for project configuration.
 - Bound Pi's per-project adapter cache and file-based configuration input.
 - Repair wiki navigation and check internal documentation links before each build.

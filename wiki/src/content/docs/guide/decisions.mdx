@@ -3,16 +3,19 @@ title: Understand decisions
 description: Learn how deterministic rules classify safe, dangerous, and ambiguous Bash calls.
 ---
 
-Auto Mode Gate applies deterministic rules before the planned permission judge. Version 0.1.0 does not invoke a model judge; every ambiguous result blocks. The target design sends only eligible unresolved cases to a user-selected model.
+Auto Mode Gate applies deterministic rules before the permission judge. Published version 0.1.0 does not invoke a model judge. The current unreleased source sends only an eligible sanitized Git request to a user-selected Pi model.
 
 ## Decision flow
 
 ```text
 action
 └─ deterministic policy
-   ├─ safe      -> continue
-   ├─ dangerous -> block
-   └─ ambiguous -> block
+   ├─ allow-final              -> continue without AI
+   ├─ deny-final               -> block without AI
+   ├─ unresolved-ineligible    -> block without AI
+   └─ unresolved-eligible
+      ├─ Pi judge allow        -> continue
+      └─ deny/unavailable/fail -> block
 ```
 
 The core returns a structured decision. The adapter then converts a blocked decision into the host-specific denial behavior.
@@ -43,13 +46,13 @@ The deterministic precedence is:
 6. Unsupported or ambiguous syntax.
 7. Narrow safe-command allowance.
 
-Every result other than `allow` has a stable denial code. Ambiguous actions use `AMG_DENY_AMBIGUOUS` and a final `deny` effect.
+Every result other than `allow` has a stable denial code. Ineligible ambiguity uses `AMG_DENY_AMBIGUOUS`. Eligible failures use judge-specific unavailable, timeout, cancelled, invalid-response, or error codes.
 
-## Planned permission judge
+## Permission judge
 
-The permission judge is the final stage of the target design. Deterministic allowances and denials skip the model, which reduces calls and prevents the judge from weakening fixed policy. Eligible ambiguous cases receive minimal normalized context instead of command history, prompts, objectives, or unrelated session data.
+Deterministic allowances and denials skip the model, which reduces calls and prevents the judge from weakening fixed policy. Eligibility requires a configured exact Git path, simple literal syntax, and a closed `diff`, `log`, `show`, or `status` request. The model receives only shell, operation, option-risk, and argument-kind enums. It receives no command text, values, paths, URLs, secrets, history, objectives, host context, or IDs.
 
-The judge requires a tested, isolated host transport with authentication, cancellation, timeout, recursion prevention, and strict output validation. It will never override a deterministic denial. Missing transport, errors, timeouts, and invalid output fail closed.
+Pi uses one isolated model-registry call with `tools: []`, no history, `maxRetries: 0`, cancellation, and a local deadline that does not wait for late providers. Only one canonical JSON allow or deny response is accepted. OpenCode has no verified transport and blocks eligible cases as unavailable.
 
 ## Next steps
 

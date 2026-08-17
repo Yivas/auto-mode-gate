@@ -21,15 +21,26 @@ The full resolution order is:
 
 Configured roots and every file path must be absolute for the current operating system. Relative roots fail closed.
 
-A minimal global configuration looks like this:
+Package `0.1.0` supports the deterministic keys below. The `permissionJudge` block applies only to the current unreleased source.
+
+A global configuration for the current source looks like this:
 
 ```json
 {
   "mode": "enforce",
   "shell": "powershell",
   "trustedExecutablePaths": [
-    "C:\\Windows\\System32\\where.exe"
-  ]
+    "C:\\Windows\\System32\\where.exe",
+    "C:\\Program Files\\Git\\cmd\\git.exe"
+  ],
+  "permissionJudge": {
+    "enabled": true,
+    "model": {
+      "provider": "example-provider",
+      "id": "example-model"
+    },
+    "timeoutMs": 15000
+  }
 }
 ```
 
@@ -39,23 +50,27 @@ A minimal global configuration looks like this:
 | `shell` | `bash`, `powershell`, `cmd` | Required before a Bash call can be allowed. |
 | `trustedExecutablePaths` | Absolute path array | Exact authority for narrow read-only allowances. |
 | `logPath` | Absolute file path | Optional sanitized JSONL decision log. |
+| `permissionJudge` | Strict object | Global opt-in, default Pi model, and timeout from 1,000 through 120,000 ms. |
 
 Create the log directory before starting the host when `logPath` is configured.
 
 ## Project configuration
 
-Project configuration accepts only `mode` and `trustedExecutablePaths`:
+Project configuration can also disable the judge or reduce its timeout:
 
 ```json
 {
   "mode": "enforce",
   "trustedExecutablePaths": [
     "C:\\Windows\\System32\\where.exe"
-  ]
+  ],
+  "permissionJudge": {
+    "enabled": false
+  }
 }
 ```
 
-A project can tighten `shadow` to `enforce` and remove trusted paths. It cannot enable a globally `off` gate, relax `enforce`, set the shell, add trust absent from the global file, or set a log path.
+A project can tighten `shadow` to `enforce`, remove trusted paths, disable the judge, or reduce its timeout. It cannot enable a globally `off` gate, relax `enforce`, set the shell, add trust absent from the global file, set a log path, authorize the judge, change its model, or increase its timeout.
 
 Each configuration file may contain at most 64 KiB, and each trusted-path list may contain at most 256 entries. Unknown keys, invalid JSON, relative paths, oversized input, and unreadable files fail closed.
 
@@ -69,7 +84,7 @@ Each configuration file may contain at most 64 KiB, and each trusted-path list m
 
 ## Configuration failures
 
-Missing shell evidence, malformed input, malformed configuration, unsupported syntax, and internal errors fail closed. The gate does not resolve `PATH` or rewrite commands to manufacture executable identity.
+Missing shell evidence, malformed input, malformed configuration, unsupported syntax, and internal errors fail closed. Missing or malformed judge authorization disables the judge. A configured model that Pi does not expose blocks without fallback. The gate does not resolve `PATH` or rewrite commands to manufacture executable identity.
 
 ## Next steps
 

@@ -29,9 +29,17 @@ Pi 0.84.1 lists installed packages in `pi list`; it does not list auto-discovere
 pi --offline --list-models
 ```
 
+In the current unreleased source, verify session state from Pi with:
+
+```text
+/amg-judge status
+```
+
+Use `/amg-judge on` only after global authorization names an available model. Use `/amg-judge off` to disable the current session, `/amg-judge model <provider> <model-id>` to select another available model, and `/amg-judge reset` to restore the global default. These commands do not edit files or change Pi's primary model.
+
 ## What is enforced
 
-Both adapters enforce calls to their built-in `bash` tool. Other tools remain under native host permissions. The shared conformance suite exercises the same policy corpus for both hosts.
+Both adapters enforce calls to their built-in `bash` tool. Other tools remain under native host permissions. The shared conformance suite exercises deterministic and judge outcomes. Pi can judge an eligible request in an active session; OpenCode blocks the same case as unavailable.
 
 A child process must load its own adapter. The hooks do not guarantee that a separately launched child host loaded the gate.
 
@@ -47,7 +55,7 @@ Run the project test suite from the repository root:
 npm test
 ```
 
-The published package documents only the validated OpenCode, Pi, and Node baselines. Do not infer broader compatibility from a successful local run.
+The published package documents only the validated OpenCode, Pi, and Node baselines. Judge behavior currently belongs to unreleased source. Do not infer broader compatibility or real-model safety from a successful local or loopback run.
 
 ## Next steps
 

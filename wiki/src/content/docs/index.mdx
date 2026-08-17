@@ -13,7 +13,7 @@ hero:
       variant: secondary
 ---
 
-Auto Mode Gate applies one host-neutral policy before a built-in Bash tool call executes. Version 0.1.0 blocks dangerous and ambiguous actions without invoking a model judge. The planned judge will run only after deterministic analysis for eligible cases that remain unresolved.
+Auto Mode Gate applies one host-neutral policy before a built-in Bash tool call executes. Published version 0.1.0 blocks dangerous and ambiguous actions without invoking a model judge. The current unreleased source adds an opt-in Pi judge for a narrow eligible Git request after deterministic analysis.
 
 :::caution[Not an operating-system sandbox]
 Auto Mode Gate does not replace native OpenCode or Pi permissions. A separately launched child host must load its own adapter, and coverage is limited to the documented hook paths.
@@ -23,17 +23,19 @@ Auto Mode Gate does not replace native OpenCode or Pi permissions. A separately 
 
 1. The host adapter normalizes the Bash call and its available evidence.
 2. The shared core applies deterministic rules.
-3. A safe, exact trusted-path read may continue; dangerous or ambiguous input blocks.
+3. A safe, exact trusted-path read may continue; dangerous and ineligible input blocks.
+4. An eligible Pi action reaches one isolated judge call only when global configuration and the current session enable it.
 
 | Result | Effect |
 |-|-|
-| `safe` | Continue when the exact configured executable path is trusted. |
-| `dangerous` | Block before the host executes the call. |
-| `ambiguous` | Block because the evidence or syntax is not sufficient. |
+| `allow-final` | Continue without a model call. |
+| `deny-final` | Block without a model call. |
+| `unresolved-ineligible` | Block without a model call. |
+| `unresolved-eligible` | Pi may ask once; OpenCode blocks as unavailable. |
 
-## Planned AI review
+## Pi judge in current source
 
-A future permission judge will receive minimal structured context only for eligible ambiguous cases. Deterministic allowances and denials will not spend a model call, and the judge will never override a deterministic denial. Errors, timeouts, invalid output, and unavailable host transport will continue to block.
+Pi sends only closed enums for a configured Git `diff`, `log`, `show`, or `status` candidate. It sends no command text, values, paths, URLs, secrets, history, host context, or IDs. Deterministic decisions, `off`, and `shadow` make zero model calls. Cancellation, deadline, invalid output, tool calls, errors, and unavailable models block.
 
 ## Choose a path
 
@@ -44,4 +46,4 @@ A future permission judge will receive minimal structured context only for eligi
 
 ## What this project protects
 
-The gate is deliberately narrow. It does not execute commands, contact a network service, persist command text, or replace the host's native permissions. It records only sanitized decision metadata when logging is configured.
+The gate is deliberately narrow. The shared core does not execute commands or contact a network service. An authorized active Pi session may use the host's configured model transport for one eligible request. The project does not persist command text and records only sanitized decision metadata when logging is configured.

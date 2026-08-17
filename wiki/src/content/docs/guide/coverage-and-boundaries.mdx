@@ -8,7 +8,7 @@ Auto Mode Gate is a pre-tool policy gate, not an operating-system sandbox. Its g
 ## Host coverage
 
 - OpenCode uses `tool.execute.before` for the validated 1.18.18 baseline.
-- Pi uses `tool_call` for the validated 0.84.1 baseline.
+- Pi uses `tool_call` for the executed 0.84.1 deterministic baseline and the isolated 0.84.2 judge probe.
 - Both adapters enforce only the built-in `bash` tool.
 - Other tools remain under native host permissions.
 
@@ -22,15 +22,15 @@ A trusted path is configuration authority, not an immutable file handle. Replaci
 
 ## No sandbox or remote service
 
-The shared core does not execute commands, display UI, contact a network service, or persist state. It analyzes normalized input and returns a decision. Native host permissions still apply after an allowance.
+The shared core does not execute commands, display UI, contact a network service, or persist state. The Pi adapter may contact the user-configured model through Pi for one eligible request in an active session. Native host permissions still apply after an allowance.
 
 The project does not provide an operating-system sandbox, a remote policy service, or a replacement for native host permissions.
 
 ## Permission judge status
 
-Version 0.1.0 does not define or invoke a model judge. Pi exposes a host-native model call, but no equivalent safe OpenCode API or host-neutral transport was verified. The core therefore converts every ambiguous result into a denial with a stable reason code.
+Published version 0.1.0 does not invoke a model judge. The current unreleased source supports an opt-in Pi judge through the host's model registry. Each Pi session starts off and can use `/amg-judge` to inspect status, toggle the judge, select an available model, or reset to the global default.
 
-The target design invokes a user-selected model only after deterministic policy leaves an eligible case unresolved. This ordering avoids model calls for known safe and dangerous actions. The judge will receive minimal structured context and fail closed when transport, timeout, validation, or model output fails.
+Only closed sanitized Git candidates are eligible. Deterministic decisions, ineligible input, `off`, and `shadow` use zero model calls. Pi failures block before the Bash effect. OpenCode has no equivalent verified transport and blocks eligible cases as unavailable.
 
 ## Next steps
 

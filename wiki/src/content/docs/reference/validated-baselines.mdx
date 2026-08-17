@@ -10,14 +10,15 @@ The versions below are validated host-contract baselines, not broad compatibilit
 | Component | Validated baseline | Evidence |
 |-|-|-|
 | OpenCode | `v1.18.18` | `tool.execute.before` blocked before a stub effect. |
-| Pi | `v0.84.1` | `tool_call` blocked before a stub effect. |
-| Node.js test suite | `24.9.0` | Root unit, runtime, integration, and conformance tests. |
+| Pi deterministic adapter | `v0.84.1` | `tool_call` blocked before a stub effect. |
+| Pi judge transport | `v0.84.2`, commit `914cf1472e715297caa30db4b9535d534a9eb718` | Temporary loopback probe passed ten transport and session cases. |
+| Node.js test suite | `24.9.0` | Unit, runtime, integration, privacy, race, and conformance tests. |
 
-Pi `v0.84.2` at commit `914cf1472e715297caa30db4b9535d534a9eb718` remains a static research baseline. It was not installed or executed during the isolated probes.
+The Pi 0.84.2 probe used a temporary package, profile, and loopback OpenAI-compatible server. It did not use credentials, contact a real model, or modify the active Pi 0.84.1 installation.
 
 ## What the tests cover
 
-The source-level adapter suite replays the shared policy corpus for both hosts. Host doubles assert that OpenCode throws and Pi returns a blocking result before a stub effect, that allowed Bash calls already contain the exact trusted path evaluated by the core, and that `shadow`, `off`, and project configuration preserve the core's restrictions.
+The source-level adapter suite replays shared deterministic and judge corpora. Host doubles cover pre-effect blocking, exact trusted paths, judge allow/deny/unavailable/error/invalid output, session isolation, zero-tool requests, no recursion, model absence, cancellation, monotonic deadlines, synchronous provider blocking, late completion, `shadow`, `off`, and OpenCode degradation.
 
 Runtime tests separately exercise configuration precedence, sanitized logs, malformed configuration, log-write failure, and both host entry points. Isolated profile checks recorded in the compatibility evidence cover source loading and removal.
 
@@ -26,11 +27,11 @@ Runtime tests separately exercise configuration precedence, sanitized logs, malf
 A supported release must repeat isolated integration tests that prove:
 
 - the hook blocks before a stub side effect;
-- timeout and error paths fail closed;
+- timeout, cancellation, late completion, model absence, invalid output, and error paths fail closed;
 - configuration does not overwrite user files;
 - removal leaves unrelated configuration unchanged.
 
-Source-profile results do not authorize a package release or broader compatibility claim.
+Source-profile and loopback results do not authorize a package release, real-model inference claim, or broader compatibility claim.
 
 ## Technical evidence
 

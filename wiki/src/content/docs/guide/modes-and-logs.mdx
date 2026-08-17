@@ -9,9 +9,9 @@ The same policy can run in three modes. Logging is optional, and log records del
 
 | Mode | Behavior |
 |-|-|
-| `enforce` | Denied actions block. |
-| `shadow` | Policy and logs run, but actions do not block. |
-| `off` | The adapter remains loaded but does not block. |
+| `enforce` | Denied actions block; an active Pi session may call the judge for eligible input. |
+| `shadow` | Deterministic policy and logs run, but actions do not block and the judge is not called. |
+| `off` | The adapter remains loaded, does not block, and does not call the judge. |
 
 `shadow` is an observation mode, not a security control. A project can tighten `shadow` to `enforce`, but it cannot relax a global `enforce` setting or activate a globally disabled gate.
 
@@ -21,10 +21,10 @@ When the global file contains an absolute `logPath`, each JSONL record contains 
 
 - host, tool, and shell enums;
 - policy verdict, final effect, and stable decision code;
-- deterministic source, mode, and blocked state;
+- deterministic or judge source, mode, and blocked state;
 - an in-memory repeated-rejection count.
 
-The rejection tracker keeps at most 1,024 counts in memory. Its hash is not returned or written to the log.
+The rejection tracker keeps at most 1,024 counts in memory. Its hash is not returned or written to the log. Judge requests, responses, model references, the static instruction, timing, and provider errors are also excluded.
 
 ## Log failures
 
