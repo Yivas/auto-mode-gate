@@ -13,6 +13,7 @@ import type {
   PermissionAssessment,
   PermissionJudge,
   PermissionJudgeOutcome,
+  PermissionJudgeRequest,
   Shell,
   StructuredDenial,
   VerifiedExecutable,
@@ -249,11 +250,15 @@ export class AutoModeGate {
       let outcome: PermissionJudgeOutcome;
       try {
         const fallbackSignal = signal ?? new AbortController().signal;
-        const value = await judge.evaluate(assessment.eligibility.request, fallbackSignal);
-        if (signal?.aborted) {
+        const result = await evaluateJudgeWithCancellation(
+          judge,
+          assessment.eligibility.request,
+          fallbackSignal,
+        );
+        if (result.cancelled || signal?.aborted) {
           outcome = { status: "cancelled" };
         } else {
-          const normalized = normalizeJudgeOutcome(value);
+          const normalized = normalizeJudgeOutcome(result.value);
           outcome = signal?.aborted ? { status: "cancelled" } : normalized;
         }
       } catch {
@@ -525,6 +530,53 @@ function resolveAssessment(
     case "unavailable":
       return { effect: "deny", code: "AMG_DENY_JUDGE_UNAVAILABLE", source: "judge" };
   }
+}
+
+function evaluateJudgeWithCancellation(
+  judge: PermissionJudge,
+  request: PermissionJudgeRequest,
+  signal: AbortSignal,
+): Promise<{ readonly cancelled: true } | { readonly cancelled: false; readonly value: unknown }> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (
+      result: { readonly cancelled: true } | { readonly cancelled: false; readonly value: unknown },
+    ) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      signal.removeEventListener("abort", cancel);
+      resolve(result);
+    };
+    const fail = (error: unknown) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      signal.removeEventListener("abort", cancel);
+      reject(error);
+    };
+    const cancel = () => finish({ cancelled: true });
+
+    if (signal.aborted) {
+      cancel();
+      return;
+    }
+    signal.addEventListener("abort", cancel, { once: true });
+
+    let pending: Promise<unknown>;
+    try {
+      pending = Promise.resolve(judge.evaluate(request, signal));
+    } catch (error) {
+      fail(error);
+      return;
+    }
+    pending.then(
+      (value) => finish({ cancelled: false, value }),
+      fail,
+    );
+  });
 }
 
 function normalizeJudgeOutcome(value: unknown): PermissionJudgeOutcome {

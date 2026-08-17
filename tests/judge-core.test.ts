@@ -165,6 +165,24 @@ test("in-flight cancellation cannot be overridden by judge allow", async () => {
   assert.equal(decision.blocked, true);
 });
 
+test("cancellation finalizes when a custom judge ignores AbortSignal", async () => {
+  const controller = new AbortController();
+  const pending = new Promise<never>(() => {});
+  const evaluation = new AutoModeGate({
+    mode: "enforce",
+    trustedExecutablePaths: ["/trusted/bin/git"],
+  }).evaluateWithJudge(
+    eligibleInput(),
+    { async evaluate() { return pending; } },
+    controller.signal,
+  );
+
+  controller.abort();
+  const decision = await evaluation;
+  assert.equal(decision.code, "AMG_DENY_JUDGE_CANCELLED");
+  assert.equal(decision.effect, "deny");
+});
+
 test("cancellation during outcome validation cannot be overridden", async () => {
   const controller = new AbortController();
   const outcome = new Proxy(
