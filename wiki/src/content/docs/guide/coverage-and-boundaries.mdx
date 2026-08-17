@@ -18,7 +18,7 @@ A separately launched host process must load its own adapter. The hooks do not p
 
 The adapters require explicit shell evidence and an exact absolute executable path for narrow safe allowances. They do not infer agent or subagent identity, session ancestry, objectives, recent actions, or arguments that the host does not provide.
 
-A trusted path is configuration authority, not an immutable file handle. Replacing a trusted file between policy evaluation and execution remains outside the hook contract.
+A trusted path is configuration authority, not an immutable file handle. Replacing a trusted file between policy evaluation and execution remains outside the hook contract. Within the host process, an enforced allowance freezes the reviewed argument object so later pre-tool handlers cannot replace its command.
 
 ## No sandbox or remote service
 
@@ -28,7 +28,7 @@ The project does not provide an operating-system sandbox, a remote policy servic
 
 ## Permission judge status
 
-Published version 0.1.0 does not invoke a model judge. The current unreleased source supports an opt-in Pi judge through the host's model registry. Each Pi session starts off and can use `/amg-judge` to inspect status, toggle the judge, select an available model, or reset to the global default.
+Published version 0.1.0 does not invoke a model judge. The current unreleased source supports an opt-in Pi judge through the host's model registry. Its manifest is private until an approved release changes the version and publication metadata. Each Pi session starts off and can use `/amg-judge` to inspect status, toggle the judge, select an available model, or reset to the global default.
 
 Only closed sanitized Git candidates are eligible. Deterministic decisions, ineligible input, `off`, and `shadow` use zero model calls. Pi failures block before the Bash effect. OpenCode has no equivalent verified transport and blocks eligible cases as unavailable.
 

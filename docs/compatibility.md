@@ -35,9 +35,10 @@ Pi:
 
 The source-level adapter suite replays the shared deterministic and judge corpora. Host doubles
 assert that OpenCode throws and Pi returns a blocking result before a stub effect, that allowed Bash
-calls already contain the exact trusted path evaluated by the core, and that `shadow`, `off`, project
-configuration, cancellation, timeout, late completion, invalid output, and transport errors preserve
-the core's restrictions.
+calls already contain the exact trusted path evaluated by the core, and that enforced allowances
+freeze the mutable host argument object before later pre-tool handlers run. They also verify that
+`shadow`, `off`, project configuration, cancellation, timeout, late completion, invalid output, and
+transport errors preserve the core's restrictions.
 
 These tests exercise the pinned hook shapes without starting either host. The executed baselines in
 the table remain evidence for hook ordering; the adapter implementation did not modify or start
@@ -80,6 +81,8 @@ an eligible case.
 - Pi 0.84.2 exposes the model-registry transport used by the current source; no equivalent isolated
   API was verified in OpenCode 1.18.18.
 - The current judge transport is Pi-specific and is not included in published package `0.1.0`.
+- The unreleased `main` manifest is private. `npm pack --dry-run` only previews package contents and
+  displays a `0.1.0` filename; it does not create a tarball or authorize distribution.
 - Only simple literal Git `diff`, `log`, `show`, and `status` requests with a configured exact path
   can become eligible; values, paths, URLs, secrets, host context, and IDs are not transported.
 - Coverage is limited to execution paths proven to pass through the documented hooks.

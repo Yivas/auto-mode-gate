@@ -8,6 +8,10 @@
 - Fail closed when OpenCode or Pi omits the project directory required for project configuration.
 - Bound Pi's per-project adapter cache and file-based configuration input.
 - Repair wiki navigation and check internal documentation links before each build.
+- Freeze argument objects after enforced allowances so later pre-tool handlers cannot replace the reviewed command.
+- Reject malformed or oversized Pi completion shapes and recheck the local deadline after response parsing.
+- Fail closed for explicitly unauthorized adapter judges and asynchronous decision callbacks.
+- Mark the unreleased `main` manifest private to prevent accidental publication as `0.1.0`.
 
 ## 0.1.0 - 2026-08-16
 

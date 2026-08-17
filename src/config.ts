@@ -3,6 +3,10 @@ import { homedir } from "node:os";
 import { posix, win32 } from "node:path";
 
 import type { AdapterOptions } from "./adapter.ts";
+import {
+  MAX_PERMISSION_JUDGE_TIMEOUT_MS,
+  MIN_PERMISSION_JUDGE_TIMEOUT_MS,
+} from "./limits.ts";
 import type {
   DecisionLogRecord,
   GateConfig,
@@ -16,8 +20,6 @@ export const PROJECT_CONFIG_NAME = ".auto-mode-gate.json";
 
 const MAX_CONFIG_BYTES = 65_536;
 const MAX_TRUSTED_EXECUTABLE_PATHS = 256;
-const MIN_JUDGE_TIMEOUT_MS = 1_000;
-const MAX_JUDGE_TIMEOUT_MS = 120_000;
 
 export interface ConfigDiscoveryOptions {
   readonly globalConfigPath?: string;
@@ -237,8 +239,8 @@ function resolvePermissionJudge(
 function readJudgeTimeout(value: unknown): number | undefined {
   return typeof value === "number" &&
     Number.isInteger(value) &&
-    value >= MIN_JUDGE_TIMEOUT_MS &&
-    value <= MAX_JUDGE_TIMEOUT_MS
+    value >= MIN_PERMISSION_JUDGE_TIMEOUT_MS &&
+    value <= MAX_PERMISSION_JUDGE_TIMEOUT_MS
     ? value
     : undefined;
 }

@@ -1,6 +1,7 @@
 {
   "name": "auto-mode-gate",
   "version": "0.1.0",
+  "private": true,
   "description": "Deterministic permission gate for OpenCode and Pi",
   "type": "module",
   "license": "MIT",

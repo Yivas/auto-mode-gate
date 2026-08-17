@@ -15,6 +15,7 @@ import type {
   PiExtensionContext,
   PiToolCallBlock,
   PiToolCallEvent,
+  Shell,
 } from "../src/index.ts";
 
 interface Fixture {
@@ -79,7 +80,7 @@ for (const fixture of judgeFixtures) {
     let logs = 0;
     const adapter = createShellAdapter("pi", {
       globalConfig: fixture.config,
-      shell: fixture.input.shell as never,
+      shell: readFixtureShell(fixture.input.shell),
       onDecision() {
         logs += 1;
       },
@@ -160,6 +161,32 @@ test("OpenCode allows only an explicit trusted executable path", async () => {
   await hooks["tool.execute.before"](openCodeInput("bash"), { args });
 
   assert.equal(args.command, "/trusted/bin/ls -la");
+  assert.equal(Object.isFrozen(args), true);
+  assert.throws(() => { args.command = "rm -rf build"; }, TypeError);
+});
+
+test("OpenCode rejects accessor, inherited, and proxy-backed approved commands", async () => {
+  const hooks = createOpenCodeHooks({
+    shell: "bash",
+    globalConfig: { mode: "enforce", trustedExecutablePaths: ["/trusted/bin/ls"] },
+  });
+  const inherited = Object.create({ command: "/trusted/bin/ls -la" }) as Record<string, unknown>;
+  const accessor: Record<string, unknown> = {};
+  Object.defineProperty(accessor, "command", {
+    configurable: true,
+    get: () => "/trusted/bin/ls -la",
+  });
+  const proxy = new Proxy(
+    { command: "/trusted/bin/ls -la" },
+    { get: (_target, property) => property === "command" ? "rm -rf build" : undefined },
+  );
+
+  for (const args of [inherited, accessor, proxy]) {
+    await assert.rejects(
+      hooks["tool.execute.before"](openCodeInput("bash"), { args }),
+      /AMG_DENY_(?:INVALID_INPUT|INTERNAL_ERROR)/u,
+    );
+  }
 });
 
 test("OpenCode reads plugin options and converts ambiguity to a safe error", async () => {
@@ -203,6 +230,21 @@ test("Pi allows only an explicit trusted executable path", async () => {
 
   assert.equal(result, undefined);
   assert.equal(input.command, "/trusted/bin/ls -la");
+  assert.equal(Object.isFrozen(input), true);
+  assert.throws(() => { input.command = "rm -rf build"; }, TypeError);
+});
+
+test("Pi rejects inherited approved commands", async () => {
+  const handler = registerPiHandler(
+    createPiExtension({
+      shell: "bash",
+      globalConfig: { mode: "enforce", trustedExecutablePaths: ["/trusted/bin/ls"] },
+    }),
+  );
+  const input = Object.create({ command: "/trusted/bin/ls -la" }) as Record<string, unknown>;
+
+  const result = await handler(piEvent("bash", input), {});
+  assert.match(result?.reason ?? "", /AMG_DENY_INVALID_INPUT/u);
 });
 
 test("Pi blocks ambiguity without invoking future confirmation capability", async () => {
@@ -252,6 +294,43 @@ test("missing shell evidence blocks Bash calls", async () => {
     (await pi(piEvent("bash", { command: "rm file" }), {}))?.reason ?? "",
     /AMG_DENY_UNKNOWN_ACTION/u,
   );
+});
+
+test("explicitly unauthorized adapters cannot invoke a supplied judge", async () => {
+  let calls = 0;
+  const adapter = createShellAdapter("pi", {
+    shell: "bash",
+    globalConfig: { mode: "enforce", trustedExecutablePaths: ["/trusted/bin/git"] },
+    permissionJudge: { authorized: false },
+  });
+
+  const evaluation = await adapter.evaluateWithJudge?.(
+    { command: "/trusted/bin/git diff --stat ./src" },
+    { async evaluate() {
+      calls += 1;
+      return {
+        status: "response",
+        response: { protocol: "amg-permission-judge/v1", verdict: "allow" },
+      } as const;
+    } },
+  );
+
+  assert.equal(calls, 0);
+  assert.equal(evaluation?.decision.code, "AMG_DENY_JUDGE_UNAVAILABLE");
+  assert.equal(evaluation?.decision.blocked, true);
+});
+
+test("async decision callbacks fail closed without unhandled rejection", async () => {
+  const adapter = createShellAdapter("pi", {
+    shell: "bash",
+    onDecision: async () => { throw new Error("fictional async logger failure"); },
+  });
+
+  const evaluation = adapter.evaluate({ command: "rm file" });
+  await Promise.resolve();
+
+  assert.equal(evaluation.decision.code, "AMG_DENY_INTERNAL_ERROR");
+  assert.equal(evaluation.decision.blocked, true);
 });
 
 test("adapter modes and project configuration preserve the core restrictions", () => {
@@ -304,15 +383,21 @@ test("host input errors fail closed without exposing thrown values", async () =>
   const unreadableArgs = new Proxy({}, { get: () => { throw new Error(secret); } });
   await assert.rejects(
     hooks["tool.execute.before"](openCodeInput("bash"), { args: unreadableArgs }),
-    (error: Error) => error.message.includes("AMG_DENY_INTERNAL_ERROR") && !error.message.includes(secret),
+    (error: Error) =>
+      /AMG_DENY_(?:INTERNAL_ERROR|INVALID_INPUT)/u.test(error.message) &&
+      !error.message.includes(secret),
   );
 
   const handler = registerPiHandler(createPiExtension({ shell: "bash" }));
   const unreadableEvent = new Proxy({}, { get: () => { throw new Error(secret); } });
   const result = await handler(unreadableEvent as PiToolCallEvent, {});
-  assert.match(result?.reason ?? "", /AMG_DENY_INTERNAL_ERROR/u);
+  assert.match(result?.reason ?? "", /AMG_DENY_(?:INTERNAL_ERROR|INVALID_INPUT)/u);
   assert.equal(result?.reason.includes(secret), false);
 });
+
+function readFixtureShell(value: unknown): Shell | undefined {
+  return value === "bash" || value === "powershell" || value === "cmd" ? value : undefined;
+}
 
 function openCodeInput(tool: string): OpenCodeToolBeforeInput {
   return { tool, sessionID: "fictional-session", callID: "fictional-call" };

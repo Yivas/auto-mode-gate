@@ -60,12 +60,14 @@ test("Pi judge transport sends one isolated request before allowing", async () =
 
   await runtime.command.handler("on", context);
   let effectRan = false;
-  const result = await runtime.handler(event(eligibleCommand), context);
+  const toolEvent = event(eligibleCommand);
+  const result = await runtime.handler(toolEvent, context);
   if (!result?.block) {
     effectRan = true;
   }
 
   assert.equal(effectRan, true);
+  assert.equal(Object.isFrozen(toolEvent.input), true);
   assert.equal(completeCalls, 1);
   assert.equal(runtime.toolCalls, 1);
   assert.deepEqual(capturedOptions && {
@@ -83,7 +85,7 @@ test("Pi judge transport sends one isolated request before allowing", async () =
 test("Pi judge deny, tool calls, provider errors, and missing models block", async () => {
   const cases: readonly {
     readonly name: string;
-    readonly complete?: () => Promise<TestAssistantMessage>;
+    readonly complete?: () => Promise<unknown>;
     readonly available?: readonly PiModel[];
     readonly code: RegExp;
   }[] = [
@@ -97,6 +99,80 @@ test("Pi judge deny, tool calls, provider errors, and missing models block", asy
       complete: async () => ({
         stopReason: "toolUse",
         content: [{ type: "toolCall" }],
+      }),
+      code: /AMG_DENY_JUDGE_INVALID_RESPONSE/u,
+    },
+    {
+      name: "proxied content index",
+      complete: async () => ({
+        stopReason: "stop",
+        content: new Proxy([], {
+          get(target, property, receiver) {
+            if (property === "length") {
+              return 1;
+            }
+            if (property === "0") {
+              return {
+                type: "text",
+                text: '{"protocol":"amg-permission-judge/v1","verdict":"allow"}',
+              };
+            }
+            return Reflect.get(target, property, receiver);
+          },
+        }),
+      }),
+      code: /AMG_DENY_JUDGE_INVALID_RESPONSE/u,
+    },
+    {
+      name: "inherited top-level fields",
+      complete: async () => Object.create({
+        stopReason: "stop",
+        content: [{
+          type: "text",
+          text: '{"protocol":"amg-permission-judge/v1","verdict":"allow"}',
+        }],
+      }),
+      code: /AMG_DENY_JUDGE_INVALID_RESPONSE/u,
+    },
+    {
+      name: "proxied content iterator",
+      complete: async () => ({
+        stopReason: "stop",
+        content: new Proxy([], {
+          get(target, property, receiver) {
+            if (property === "length") {
+              return 0;
+            }
+            if (property === Symbol.iterator) {
+              return function* () {
+                yield {
+                  type: "text",
+                  text: '{"protocol":"amg-permission-judge/v1","verdict":"allow"}',
+                };
+              };
+            }
+            return Reflect.get(target, property, receiver);
+          },
+        }),
+      }),
+      code: /AMG_DENY_JUDGE_INVALID_RESPONSE/u,
+    },
+    {
+      name: "too many content blocks",
+      complete: async () => ({
+        stopReason: "stop",
+        content: Array.from({ length: 17 }, () => ({ type: "thinking" })),
+      }),
+      code: /AMG_DENY_JUDGE_INVALID_RESPONSE/u,
+    },
+    {
+      name: "malformed top-level message",
+      complete: async () => Object.assign([], {
+        stopReason: "stop",
+        content: [{
+          type: "text",
+          text: '{"protocol":"amg-permission-judge/v1","verdict":"allow"}',
+        }],
       }),
       code: /AMG_DENY_JUDGE_INVALID_RESPONSE/u,
     },
@@ -198,6 +274,58 @@ test("Pi in-flight cancellation wins over a late allow and finalizes once", asyn
   assert.equal(logs, 1);
 });
 
+test("Pi blocks if input changes while the judge is pending", async () => {
+  let resolveStarted: (() => void) | undefined;
+  let resolveCompletion: ((message: TestAssistantMessage) => void) | undefined;
+  const started = new Promise<void>((resolve) => { resolveStarted = resolve; });
+  const completion = new Promise<TestAssistantMessage>((resolve) => { resolveCompletion = resolve; });
+  const runtime = registerPi(createPiExtension({
+    shell: "bash",
+    globalConfig: { mode: "enforce", trustedExecutablePaths: ["/trusted/bin/git"] },
+    permissionJudge: authorization,
+  }));
+  const context = piContext(async () => {
+    resolveStarted?.();
+    return completion;
+  });
+  await runtime.command.handler("on", context);
+  const input = { command: eligibleCommand };
+
+  const pending = runtime.handler(eventWithInput(input), context);
+  await started;
+  input.command = "rm -rf build";
+  resolveCompletion?.(message('{"protocol":"amg-permission-judge/v1","verdict":"allow"}'));
+  const result = await pending;
+
+  assert.match(result?.reason ?? "", /AMG_DENY_INTERNAL_ERROR/u);
+});
+
+test("Pi malformed signal cleanup cannot leave a decision pending", async () => {
+  const controller = new AbortController();
+  const signal = new Proxy(controller.signal, {
+    get(target, property) {
+      if (property === "removeEventListener") {
+        return () => { throw new Error("fictional cleanup failure"); };
+      }
+      const value = Reflect.get(target, property, target) as unknown;
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+  const runtime = registerPi(createPiExtension({
+    shell: "bash",
+    globalConfig: { mode: "enforce", trustedExecutablePaths: ["/trusted/bin/git"] },
+    permissionJudge: authorization,
+  }));
+  const context = {
+    ...piContext(async () => message('{"protocol":"amg-permission-judge/v1","verdict":"allow"}')),
+    signal,
+  };
+  await runtime.command.handler("on", context);
+
+  const result = await runtime.handler(event(eligibleCommand), context);
+  assert.equal(result, undefined);
+});
+
 test("Pi local deadline ignores a late provider resolution and logs once", async () => {
   let resolveCompletion: ((message: TestAssistantMessage) => void) | undefined;
   let logs = 0;
@@ -241,6 +369,33 @@ test("Pi deadline catches a synchronously blocking provider", async () => {
     }
     return message('{"protocol":"amg-permission-judge/v1","verdict":"allow"}');
   });
+  await runtime.command.handler("on", context);
+
+  const result = await runtime.handler(event(eligibleCommand), context);
+  assert.match(result?.reason ?? "", /AMG_DENY_JUDGE_TIMEOUT/u);
+});
+
+test("Pi deadline is rechecked after synchronous response parsing", async () => {
+  const runtime = registerPi(createPiExtension({
+    shell: "bash",
+    globalConfig: { mode: "enforce", trustedExecutablePaths: ["/trusted/bin/git"] },
+    permissionJudge: authorization,
+  }));
+  const completion: Record<string, unknown> = { stopReason: "stop" };
+  Object.defineProperty(completion, "content", {
+    enumerable: true,
+    get() {
+      const until = Date.now() + 1_100;
+      while (Date.now() < until) {
+        // Simulate an untrusted response object blocking during validation.
+      }
+      return [{
+        type: "text",
+        text: '{"protocol":"amg-permission-judge/v1","verdict":"allow"}',
+      }];
+    },
+  });
+  const context = piContext(async () => completion);
   await runtime.command.handler("on", context);
 
   const result = await runtime.handler(event(eligibleCommand), context);
@@ -331,7 +486,7 @@ function piContext(
     model: PiModel,
     context: TestCompletionContext,
     options: TestCompletionOptions,
-  ) => Promise<TestAssistantMessage>) | undefined = async () => message(
+  ) => Promise<unknown>) | undefined = async () => message(
     '{"protocol":"amg-permission-judge/v1","verdict":"allow"}',
   ),
   available: readonly PiModel[] = [model],
@@ -353,7 +508,11 @@ function piContext(
 }
 
 function event(command: string): PiToolCallEvent {
-  return { toolName: "bash", toolCallId: "fictional-call", input: { command } };
+  return eventWithInput({ command });
+}
+
+function eventWithInput(input: Record<string, unknown>): PiToolCallEvent {
+  return { toolName: "bash", toolCallId: "fictional-call", input };
 }
 
 function message(text: string): TestAssistantMessage {

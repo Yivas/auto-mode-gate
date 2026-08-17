@@ -1,3 +1,4 @@
+import { MAX_SHELL_COMMAND_LENGTH } from "./limits.ts";
 import { normalizeExecutableName, parseShellCommand } from "./shell.ts";
 import type {
   NormalizedShellAction,
@@ -9,7 +10,6 @@ import type {
   PermissionJudgeSanitizedRequest,
 } from "./types.ts";
 
-const MAX_COMMAND_LENGTH = 4_096;
 const MAX_TOKEN_BYTES = 256;
 const MAX_OPTIONS = 8;
 const MAX_ARGUMENTS = 8;
@@ -73,7 +73,7 @@ export function buildPermissionJudgeRequest(
       action.kind !== "shell" ||
       action.tool !== "shell" ||
       typeof action.command !== "string" ||
-      action.command.length > MAX_COMMAND_LENGTH ||
+      action.command.length > MAX_SHELL_COMMAND_LENGTH ||
       action.truncated === true ||
       hasAdjacentQuotes(action.command) ||
       !hasMatchingExecutableIdentity(action, trustedExecutablePaths)

@@ -1,3 +1,7 @@
+import {
+  MAX_PERMISSION_JUDGE_TIMEOUT_MS,
+  MIN_PERMISSION_JUDGE_TIMEOUT_MS,
+} from "./limits.ts";
 import type {
   PermissionJudgeAuthorization,
   PermissionJudgeModelReference,
@@ -8,8 +12,6 @@ const MAX_PROVIDER_LENGTH = 64;
 const MAX_MODEL_ID_LENGTH = 128;
 const PROVIDER_PATTERN = /^[a-z0-9][a-z0-9._-]*$/iu;
 const MODEL_ID_PATTERN = /^@?[a-z0-9][a-z0-9._:/@+-]*$/iu;
-const MIN_TIMEOUT_MS = 1_000;
-const MAX_TIMEOUT_MS = 120_000;
 
 export type PermissionJudgeModelAvailability = (
   model: PermissionJudgeModelReference,
@@ -120,18 +122,19 @@ function normalizeAuthorization(
       authorization.defaultModel.provider,
       authorization.defaultModel.id,
     );
+    const timeoutMs = authorization.timeoutMs;
     if (
       !defaultModel ||
-      !Number.isInteger(authorization.timeoutMs) ||
-      authorization.timeoutMs < MIN_TIMEOUT_MS ||
-      authorization.timeoutMs > MAX_TIMEOUT_MS
+      !Number.isInteger(timeoutMs) ||
+      timeoutMs < MIN_PERMISSION_JUDGE_TIMEOUT_MS ||
+      timeoutMs > MAX_PERMISSION_JUDGE_TIMEOUT_MS
     ) {
       return Object.freeze({ authorized: false });
     }
     return Object.freeze({
       authorized: true,
       defaultModel,
-      timeoutMs: authorization.timeoutMs,
+      timeoutMs,
     });
   } catch {
     return Object.freeze({ authorized: false });

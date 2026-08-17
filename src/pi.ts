@@ -3,6 +3,8 @@ import { performance } from "node:perf_hooks";
 import {
   createShellAdapter,
   denialReason,
+  protectApprovedInput,
+  snapshotHostInput,
   type AdapterOptions,
   type ShellAdapter,
 } from "./adapter.ts";
@@ -25,6 +27,7 @@ import type {
 } from "./types.ts";
 
 const MAX_CACHED_ADAPTERS = 32;
+const MAX_COMPLETION_CONTENT_BLOCKS = 16;
 
 export interface PiToolCallEvent {
   readonly toolName: string;
@@ -40,14 +43,6 @@ export interface PiToolCallBlock {
 export interface PiModel {
   readonly provider: string;
   readonly id: string;
-}
-
-interface PiAssistantMessage {
-  readonly stopReason: string;
-  readonly content: readonly {
-    readonly type: string;
-    readonly text?: string;
-  }[];
 }
 
 interface PiCompletionContext {
@@ -70,7 +65,7 @@ type PiComplete = (
   model: PiModel,
   context: PiCompletionContext,
   options?: PiCompletionOptions,
-) => Promise<PiAssistantMessage>;
+) => Promise<unknown>;
 
 interface PiModelRegistry {
   getAvailable(): readonly PiModel[];
@@ -90,7 +85,7 @@ export interface PiExtensionContext {
   readonly model?: PiModel;
   readonly signal?: AbortSignal;
   readonly ui?: {
-    notify?(message: string, type?: "info" | "warning" | "error"): void;
+    notify?(message: string, type?: "info" | "warning" | "error"): void | Promise<void>;
     confirm?(title: string, message: string): boolean | Promise<boolean>;
   };
   readonly [key: string]: unknown;
@@ -144,8 +139,14 @@ function registerToolCall(
         return undefined;
       }
 
-      const input = isRecord(event.input) ? event.input : undefined;
-      const call = { command: input?.command };
+      const snapshot = snapshotHostInput(event.input);
+      if (snapshot === null) {
+        return {
+          block: true,
+          reason: "AMG_DENY_INTERNAL_ERROR: The action input could not be read safely.",
+        };
+      }
+      const call = { command: snapshot?.command };
       const project = resolveProject(context);
       const commandSession = resolveSession?.(context);
       const status = commandSession?.session.status(commandSession.isModelAvailable);
@@ -159,6 +160,12 @@ function registerToolCall(
         : project.adapter.evaluate(call);
       if (evaluation.decision.blocked) {
         return { block: true, reason: denialReason(evaluation.decision) };
+      }
+      if (!protectApprovedInput(snapshot, evaluation.decision)) {
+        return {
+          block: true,
+          reason: "AMG_DENY_INTERNAL_ERROR: The approved action could not be protected from later mutation.",
+        };
       }
       return undefined;
     } catch {
@@ -197,7 +204,7 @@ function readComplete(registry: PiModelRegistry | undefined): PiComplete | undef
   }
   return async (model, context, options) => {
     const result = Reflect.apply(candidate, registry, [model, context, options]);
-    return await Promise.resolve(result as PiAssistantMessage);
+    return await Promise.resolve(result);
   };
 }
 
@@ -219,10 +226,18 @@ function completeWithDeadline(
         return;
       }
       settled = true;
-      if (timer !== undefined) {
-        clearTimeout(timer);
+      try {
+        if (timer !== undefined) {
+          clearTimeout(timer);
+        }
+      } catch {
+        // Cleanup failure must not keep the permission decision pending.
       }
-      externalSignal.removeEventListener("abort", cancel);
+      try {
+        externalSignal.removeEventListener("abort", cancel);
+      } catch {
+        // Cleanup failure must not keep the permission decision pending.
+      }
       resolve(Object.freeze(outcome));
     };
     const cancel = () => {
@@ -240,7 +255,7 @@ function completeWithDeadline(
       controller.abort();
     }, timeoutMs);
 
-    let completion: Promise<PiAssistantMessage>;
+    let completion: Promise<unknown>;
     try {
       completion = complete(
         model,
@@ -271,11 +286,14 @@ function completeWithDeadline(
     }
 
     Promise.resolve(completion).then(
-      (message) => finish(
-        performance.now() >= deadline
-          ? { status: "timeout" }
-          : readCompletion(message),
-      ),
+      (message) => {
+        if (performance.now() >= deadline) {
+          finish({ status: "timeout" });
+          return;
+        }
+        const outcome = readCompletion(message);
+        finish(performance.now() >= deadline ? { status: "timeout" } : outcome);
+      },
       () => finish(
         externalSignal.aborted
           ? { status: "cancelled" }
@@ -293,20 +311,34 @@ function completeWithDeadline(
   });
 }
 
-function readCompletion(message: PiAssistantMessage): PermissionJudgeOutcome {
+function readCompletion(message: unknown): PermissionJudgeOutcome {
   try {
-    if (message.stopReason === "error") {
+    const snapshot = structuredClone(message);
+    if (!isRecord(snapshot)) {
+      return Object.freeze({ status: "invalid-response" });
+    }
+    const stopReason = snapshot.stopReason;
+    if (stopReason === "error") {
       return Object.freeze({ status: "error" });
     }
-    if (message.stopReason === "aborted") {
+    if (stopReason === "aborted") {
       return Object.freeze({ status: "cancelled" });
     }
-    if (message.stopReason !== "stop" || !Array.isArray(message.content)) {
+    const contentBlocks = snapshot.content;
+    if (stopReason !== "stop" || !Array.isArray(contentBlocks)) {
+      return Object.freeze({ status: "invalid-response" });
+    }
+    const contentLength = contentBlocks.length;
+    if (
+      !Number.isSafeInteger(contentLength) ||
+      contentLength > MAX_COMPLETION_CONTENT_BLOCKS
+    ) {
       return Object.freeze({ status: "invalid-response" });
     }
 
     const text: string[] = [];
-    for (const content of message.content) {
+    for (let index = 0; index < contentLength; index += 1) {
+      const content = contentBlocks[index];
       if (!isRecord(content) || typeof content.type !== "string") {
         return Object.freeze({ status: "invalid-response" });
       }
@@ -529,7 +561,10 @@ function notify(
   type: "info" | "warning" | "error",
 ): void {
   try {
-    context.ui?.notify?.(message, type);
+    const result = context.ui?.notify?.(message, type);
+    if (result !== undefined) {
+      void Promise.resolve(result).catch(() => {});
+    }
   } catch {
     // A UI failure must not change gate state or escape into the host.
   }

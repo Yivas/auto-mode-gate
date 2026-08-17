@@ -51,7 +51,7 @@ export function createShellAdapter(host: KnownHost, options: AdapterOptions = {}
         try {
           const input = normalizeCall(call, configuredShell, trustedPaths, host);
           const decision = gate.evaluate(input.action);
-          options.onDecision?.(decision.log);
+          notifyDecision(options.onDecision, decision.log);
           return Object.freeze({ decision, command: input.command });
         } catch {
           return internalError(gate);
@@ -64,8 +64,9 @@ export function createShellAdapter(host: KnownHost, options: AdapterOptions = {}
       ) {
         try {
           const input = normalizeCall(call, configuredShell, trustedPaths, host);
-          const decision = await gate.evaluateWithJudge(input.action, judge, signal);
-          options.onDecision?.(decision.log);
+          const authorizedJudge = options.permissionJudge?.authorized === false ? undefined : judge;
+          const decision = await gate.evaluateWithJudge(input.action, authorizedJudge, signal);
+          notifyDecision(options.onDecision, decision.log);
           return Object.freeze({ decision, command: input.command });
         } catch {
           return internalError(gate);
@@ -106,6 +107,63 @@ function normalizeCall(
 
 export function denialReason(decision: GateDecision): string {
   return `${decision.code}: ${decision.denial?.message ?? "The action could not be evaluated safely."}`;
+}
+
+export interface HostInputSnapshot {
+  readonly input: Record<string, unknown>;
+  readonly command: string;
+}
+
+export function snapshotHostInput(input: unknown): HostInputSnapshot | undefined | null {
+  try {
+    if (!isRecord(input)) {
+      return undefined;
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(input, "command");
+    if (!descriptor || !("value" in descriptor) || typeof descriptor.value !== "string") {
+      return undefined;
+    }
+    return Object.freeze({ input, command: descriptor.value });
+  } catch {
+    return null;
+  }
+}
+
+export function protectApprovedInput(
+  snapshot: HostInputSnapshot | undefined | null,
+  decision: GateDecision,
+): boolean {
+  if (decision.mode !== "enforce" || decision.effect !== "allow") {
+    return true;
+  }
+  if (!snapshot) {
+    return false;
+  }
+  try {
+    const current = Object.getOwnPropertyDescriptor(snapshot.input, "command");
+    if (!current || !("value" in current) || current.value !== snapshot.command) {
+      return false;
+    }
+    Object.defineProperty(snapshot.input, "command", {
+      value: snapshot.command,
+      enumerable: current.enumerable,
+      writable: false,
+      configurable: false,
+    });
+    Object.freeze(snapshot.input);
+    const protectedCommand = Object.getOwnPropertyDescriptor(snapshot.input, "command");
+    return Boolean(
+      protectedCommand &&
+      "value" in protectedCommand &&
+      protectedCommand.value === snapshot.command &&
+      protectedCommand.writable === false &&
+      protectedCommand.configurable === false &&
+      Object.isFrozen(snapshot.input) &&
+      snapshot.input.command === snapshot.command
+    );
+  } catch {
+    return false;
+  }
 }
 
 function bindExecutable(
@@ -157,6 +215,17 @@ function readCommandHead(command: string, shell: Shell): { readonly token: strin
   return { token: command.slice(start, end) };
 }
 
+function notifyDecision(
+  callback: AdapterOptions["onDecision"],
+  log: DecisionLogRecord,
+): void {
+  const result = (callback as ((record: DecisionLogRecord) => unknown) | undefined)?.(log);
+  if (isPromiseLike(result)) {
+    void Promise.resolve(result).catch(() => {});
+    throw new Error("Decision callbacks must complete synchronously.");
+  }
+}
+
 function internalError(gate: AutoModeGate): AdapterEvaluation {
   const unreadable = new Proxy({}, { get: () => { throw new Error("unreadable adapter input"); } });
   return Object.freeze({ decision: gate.evaluate(unreadable), command: undefined });
@@ -168,4 +237,18 @@ function isAbsolutePath(path: string): boolean {
 
 function isShell(value: unknown): value is Shell {
   return value === "bash" || value === "powershell" || value === "cmd";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+  try {
+    return (
+      (typeof value === "object" && value !== null) || typeof value === "function"
+    ) && typeof (value as { readonly then?: unknown }).then === "function";
+  } catch {
+    return true;
+  }
 }

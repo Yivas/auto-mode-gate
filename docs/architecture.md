@@ -52,13 +52,17 @@ Deterministic precedence is:
 Every result other than `allow` has a stable denial code. Ambiguous input that cannot produce a
 closed sanitized request becomes `unresolved-ineligible` and finalizes as `AMG_DENY_AMBIGUOUS`.
 Eligible Git candidates use Pi's judge only in an authorized, active session. Missing transport,
-model, cancellation, timeout, error, or invalid output finalizes as a stable denial.
+model, cancellation, timeout, error, or invalid output finalizes as a stable denial. Embedders that
+call `evaluateWithJudge` directly must supply and enforce an `AbortSignal`; the independent local
+deadline belongs to the Pi transport boundary.
 
 The rejection tracker hashes an equivalence key and keeps at most 1,024 counts in memory. The hash
 is not returned or written to the log. Log records contain only normalized enums, the stable code,
 mode, block result, and rejection count. They exclude commands, arguments, context, prompts, secrets,
 and identifiers. When the global file sets an absolute `logPath`, the adapter appends these records
-as JSONL. A write failure becomes a sanitized internal error; it blocks in `enforce` mode.
+as JSONL. Decision callbacks must complete synchronously; a thrown error or returned promise fails
+closed instead of escaping as an unhandled rejection. A write failure becomes a sanitized internal
+error and blocks in `enforce` mode.
 
 ## Configuration and modes
 
@@ -98,16 +102,20 @@ the executable the operating system will open.
 
 `src/opencode.ts` implements the OpenCode `tool.execute.before` contract fixed in
 [`compatibility.md`](compatibility.md). It handles the `bash` tool and throws a sanitized denial when
-`decision.blocked` is true. `src/opencode-runtime.ts` supplies the loader-facing plugin and binds the
-project directory to file discovery. Missing project context installs a fail-closed hook. Other
-tools remain under native OpenCode permissions.
+`decision.blocked` is true. After an enforced allowance, the hook freezes the original argument
+object; a later pre-tool plugin therefore cannot replace the command that the gate reviewed.
+`src/opencode-runtime.ts` supplies the loader-facing plugin and binds the project directory to file
+discovery. Missing project context installs a fail-closed hook. Other tools remain under native
+OpenCode permissions.
 
 `src/pi.ts` implements Pi's async `tool_call` contract. It handles the built-in `bash` tool and
 awaits one isolated judge call before returning allow or `{ block: true, reason }`. The transport
 uses Pi's selected model registry, a new context with `tools: []`, no history, `maxRetries: 0`, host
-cancellation, and an independent local deadline. Tool-call output, late completion, invalid text,
-and provider failures block. `src/pi-runtime.ts` resolves configuration from the event context and
-keeps at most 32 project runtimes. Missing project context blocks.
+cancellation, and an independent local deadline. Tool-call output, oversized or malformed message
+shapes, parsing that crosses the deadline, late completion, invalid text, and provider failures
+block. An enforced allowance freezes Pi's mutable input object before later `tool_call` handlers run.
+`src/pi-runtime.ts` resolves configuration from the event context and keeps at most 32 project
+runtimes. Missing project context blocks.
 
 The adapters retain source-level factories for tests and embedding. The runtime entries add strict
 file discovery without modifying host settings. OpenCode and Pi activate independently through the

@@ -9,7 +9,8 @@ sends only a closed sanitized request for an eligible unresolved Git action.
 
 The core, OpenCode plugin, Pi extension, file-based configuration, sanitized JSONL logs, and
 installation flows are implemented and tested. The current source includes session-scoped Pi judge
-controls and transport; the published package does not. Version 0.1.0 is published on
+controls and transport; the published package does not. The `main` manifest is marked `private` so
+this unreleased source cannot be published under version `0.1.0`. Version 0.1.0 is published on
 [npm](https://www.npmjs.com/package/auto-mode-gate) and
 [GitHub](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.1.0). Read the
 [public documentation](https://yivas.github.io/auto-mode-gate/) for the guided installation and
@@ -42,7 +43,8 @@ Deterministic allowances, denials, ineligible input, `off`, and `shadow` skip AI
 `enforce`, only an eligible Git `diff`, `log`, `show`, or `status` candidate can reach the
 user-selected Pi model. Errors, cancellation, timeout, invalid output, tool-call output, missing
 model, inactive session, and missing transport block. A model decision never overrides a
-deterministic denial.
+deterministic denial. After an enforced allowance, the adapter freezes the host argument object so
+a later pre-tool handler cannot replace the reviewed command before execution.
 
 ## Install from npm
 
@@ -309,6 +311,11 @@ npm test
 The strict TypeScript check requires external compiler and Node type-definition paths; the exact
 versions, flags, and command used for the validated baseline are recorded in the private project
 evidence. No broader Node or host compatibility is claimed.
+
+The unreleased `main` manifest has `"private": true`. `npm pack --dry-run` previews package
+contents and displays `auto-mode-gate-0.1.0.tgz`, but it creates no tarball and does not represent a
+new `0.1.0` release. Release preparation requires an approved version bump
+and removal of the private flag in the same reviewed release commit.
 
 ## License
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createPiExtension } from "../src/index.ts";
+import { createPiExtension, PermissionJudgeSession } from "../src/index.ts";
 import type {
   PiExtension,
   PiExtensionCommand,
@@ -111,6 +111,37 @@ test("Pi permission judge command handles usage and UI failures safely", async (
     ui: { notify() { throw new Error("fictional UI failure"); } },
   };
   await assert.doesNotReject(command.handler("status", brokenUi));
+
+  const rejectedUi = {
+    ...context("/project", {}, []),
+    ui: { async notify() { throw new Error("fictional async UI failure"); } },
+  };
+  await assert.doesNotReject(command.handler("status", rejectedUi));
+  await Promise.resolve();
+});
+
+test("permission judge authorization snapshots the timeout once", () => {
+  let timeoutReads = 0;
+  const hostileAuthorization = new Proxy(
+    {
+      authorized: true as const,
+      defaultModel: { provider: "fictional-provider", id: "model-a" },
+      timeoutMs: 1_000,
+    },
+    {
+      get(target, property, receiver) {
+        if (property === "timeoutMs") {
+          timeoutReads += 1;
+          return timeoutReads === 1 ? 1_000 : 999_999_999;
+        }
+        return Reflect.get(target, property, receiver);
+      },
+    },
+  );
+
+  const session = new PermissionJudgeSession(hostileAuthorization);
+  assert.equal(session.timeoutMs(), 1_000);
+  assert.equal(timeoutReads, 1);
 });
 
 test("a new Pi extension instance resets session state", async () => {

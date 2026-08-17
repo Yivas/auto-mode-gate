@@ -1,6 +1,8 @@
 import {
   createShellAdapter,
   denialReason,
+  protectApprovedInput,
+  snapshotHostInput,
   type AdapterOptions,
   type ShellAdapter,
 } from "./adapter.ts";
@@ -50,10 +52,15 @@ function createHooks(adapter: ShellAdapter): OpenCodeHooks {
           return;
         }
 
-        const args = isRecord(output.args) ? output.args : undefined;
-        const evaluation = adapter.evaluate({ command: args?.command });
+        const snapshot = snapshotHostInput(output.args);
+        if (snapshot === null) {
+          throw new Error("AMG_DENY_INTERNAL_ERROR: The action input could not be read safely.");
+        }
+        const evaluation = adapter.evaluate({ command: snapshot?.command });
         if (evaluation.decision.blocked) {
           reason = denialReason(evaluation.decision);
+        } else if (!protectApprovedInput(snapshot, evaluation.decision)) {
+          reason = "AMG_DENY_INTERNAL_ERROR: The approved action could not be protected from later mutation.";
         }
       } catch {
         throw new Error("AMG_DENY_INTERNAL_ERROR: The action could not be evaluated safely.");
@@ -64,8 +71,4 @@ function createHooks(adapter: ShellAdapter): OpenCodeHooks {
       }
     },
   });
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

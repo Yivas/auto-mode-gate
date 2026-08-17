@@ -24,10 +24,12 @@ test("package manifest exposes the OpenCode and Pi runtime entries", async () =>
   const manifest = JSON.parse(
     await readFile(new URL("../package.json", import.meta.url), "utf8"),
   ) as {
+    readonly private: boolean;
     readonly exports: Readonly<Record<string, string>>;
     readonly pi: { readonly extensions: readonly string[] };
   };
 
+  assert.equal(manifest.private, true);
   assert.equal(manifest.exports["./server"], "./src/opencode-runtime.ts");
   assert.deepEqual(manifest.pi.extensions, ["./src/pi-runtime.ts"]);
 });

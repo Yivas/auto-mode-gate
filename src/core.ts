@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { buildPermissionJudgeRequest } from "./judge.ts";
+import { MAX_SHELL_COMMAND_LENGTH } from "./limits.ts";
 import { normalizeExecutableName, parseShellCommand } from "./shell.ts";
 import type {
   DecisionCode,
@@ -19,7 +20,6 @@ import type {
   VerifiedExecutable,
 } from "./types.ts";
 
-const MAX_COMMAND_LENGTH = 4_096;
 const MAX_REJECTION_KEYS = 1_024;
 
 const messages: Record<
@@ -368,7 +368,7 @@ function assess(input: unknown, trustedExecutablePaths: ReadonlySet<string>): In
   if (
     typeof action.command !== "string" ||
     action.command.trim() === "" ||
-    action.command.length > MAX_COMMAND_LENGTH ||
+    action.command.length > MAX_SHELL_COMMAND_LENGTH ||
     (action.truncated !== undefined && typeof action.truncated !== "boolean") ||
     action.truncated === true
   ) {
@@ -546,7 +546,11 @@ function evaluateJudgeWithCancellation(
         return;
       }
       settled = true;
-      signal.removeEventListener("abort", cancel);
+      try {
+        signal.removeEventListener("abort", cancel);
+      } catch {
+        // Cleanup failure must not keep the permission decision pending.
+      }
       resolve(result);
     };
     const fail = (error: unknown) => {
@@ -554,7 +558,11 @@ function evaluateJudgeWithCancellation(
         return;
       }
       settled = true;
-      signal.removeEventListener("abort", cancel);
+      try {
+        signal.removeEventListener("abort", cancel);
+      } catch {
+        // Cleanup failure must not keep the permission decision pending.
+      }
       reject(error);
     };
     const cancel = () => finish({ cancelled: true });
@@ -793,7 +801,7 @@ function safeEquivalenceInput(input: unknown): string {
     kind: typeof input.kind === "string" ? input.kind : typeof input.kind,
     tool: typeof input.tool === "string" ? input.tool : typeof input.tool,
     shell: typeof input.shell === "string" ? input.shell : typeof input.shell,
-    command: typeof command === "string" ? command.slice(0, MAX_COMMAND_LENGTH) : typeof command,
+    command: typeof command === "string" ? command.slice(0, MAX_SHELL_COMMAND_LENGTH) : typeof command,
     commandLength: typeof command === "string" ? command.length : undefined,
     truncated: input.truncated === true,
   });
