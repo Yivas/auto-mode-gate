@@ -3,12 +3,21 @@ import { homedir } from "node:os";
 import { posix, win32 } from "node:path";
 
 import type { AdapterOptions } from "./adapter.ts";
-import type { DecisionLogRecord, GateConfig, GateMode, Shell } from "./types.ts";
+import type {
+  DecisionLogRecord,
+  GateConfig,
+  GateMode,
+  PermissionJudgeAuthorization,
+  Shell,
+} from "./types.ts";
+import { createPermissionJudgeModelReference } from "./session.ts";
 
 export const PROJECT_CONFIG_NAME = ".auto-mode-gate.json";
 
 const MAX_CONFIG_BYTES = 65_536;
 const MAX_TRUSTED_EXECUTABLE_PATHS = 256;
+const MIN_JUDGE_TIMEOUT_MS = 1_000;
+const MAX_JUDGE_TIMEOUT_MS = 120_000;
 
 export interface ConfigDiscoveryOptions {
   readonly globalConfigPath?: string;
@@ -21,6 +30,13 @@ export interface ConfigDiscoveryOptions {
 interface GlobalFileConfig extends GateConfig {
   readonly shell?: Shell;
   readonly logPath?: string;
+  readonly permissionJudge: PermissionJudgeAuthorization;
+}
+
+interface ProjectFileConfig {
+  readonly gateConfig: Partial<GateConfig>;
+  readonly judgeDisabled: boolean;
+  readonly judgeTimeoutMs?: number;
 }
 
 export function loadAdapterOptions(
@@ -50,12 +66,14 @@ export function loadAdapterOptions(
         mode: global.mode,
         trustedExecutablePaths: global.trustedExecutablePaths,
       },
-      projectConfig: project,
+      projectConfig: project?.gateConfig,
+      permissionJudge: resolvePermissionJudge(global.permissionJudge, project),
       onDecision: global.logPath ? createDecisionLogger(global.logPath) : undefined,
     };
   } catch {
     return {
       globalConfig: { mode: "enforce", trustedExecutablePaths: [] },
+      permissionJudge: disabledPermissionJudge(),
       onDecision() {
         throw new Error("Auto Mode Gate configuration could not be loaded safely.");
       },
@@ -89,11 +107,21 @@ export function getDefaultGlobalConfigPath(
 
 function parseGlobalConfig(value: unknown, platform: NodeJS.Platform): GlobalFileConfig {
   if (value === undefined) {
-    return { mode: "enforce", trustedExecutablePaths: [] };
+    return {
+      mode: "enforce",
+      trustedExecutablePaths: [],
+      permissionJudge: disabledPermissionJudge(),
+    };
   }
   if (
     !isRecord(value) ||
-    !hasOnlyKeys(value, ["mode", "shell", "trustedExecutablePaths", "logPath"])
+    !hasOnlyKeys(value, [
+      "mode",
+      "shell",
+      "trustedExecutablePaths",
+      "logPath",
+      "permissionJudge",
+    ])
   ) {
     throw new Error("Invalid global configuration.");
   }
@@ -103,27 +131,120 @@ function parseGlobalConfig(value: unknown, platform: NodeJS.Platform): GlobalFil
   const trustedExecutablePaths = readPaths(value.trustedExecutablePaths, platform);
   const logPath =
     value.logPath === undefined ? undefined : readAbsolutePath(value.logPath, platform);
-  return { mode, shell, trustedExecutablePaths, logPath };
+  const permissionJudge = readGlobalPermissionJudge(value.permissionJudge);
+  return { mode, shell, trustedExecutablePaths, logPath, permissionJudge };
 }
 
 function parseProjectConfig(
   value: unknown,
   platform: NodeJS.Platform,
-): Partial<GateConfig> | undefined {
+): ProjectFileConfig | undefined {
   if (value === undefined) {
     return undefined;
   }
-  if (!isRecord(value) || !hasOnlyKeys(value, ["mode", "trustedExecutablePaths"])) {
+  if (
+    !isRecord(value) ||
+    !hasOnlyKeys(value, ["mode", "trustedExecutablePaths", "permissionJudge"])
+  ) {
     throw new Error("Invalid project configuration.");
   }
 
+  const judgePolicy = readProjectPermissionJudge(value.permissionJudge);
   return {
-    mode: value.mode === undefined ? undefined : readMode(value.mode),
-    trustedExecutablePaths:
-      value.trustedExecutablePaths === undefined
-        ? undefined
-        : readPaths(value.trustedExecutablePaths, platform),
+    gateConfig: {
+      mode: value.mode === undefined ? undefined : readMode(value.mode),
+      trustedExecutablePaths:
+        value.trustedExecutablePaths === undefined
+          ? undefined
+          : readPaths(value.trustedExecutablePaths, platform),
+    },
+    ...judgePolicy,
   };
+}
+
+function readGlobalPermissionJudge(value: unknown): PermissionJudgeAuthorization {
+  try {
+    if (value === undefined) {
+      return disabledPermissionJudge();
+    }
+    if (
+      !isRecord(value) ||
+      !hasOnlyKeys(value, ["enabled", "model", "timeoutMs"]) ||
+      value.enabled !== true ||
+      !isRecord(value.model) ||
+      !hasOnlyKeys(value.model, ["provider", "id"])
+    ) {
+      return disabledPermissionJudge();
+    }
+
+    const defaultModel = createPermissionJudgeModelReference(
+      value.model.provider,
+      value.model.id,
+    );
+    const timeoutMs = readJudgeTimeout(value.timeoutMs);
+    if (!defaultModel || timeoutMs === undefined) {
+      return disabledPermissionJudge();
+    }
+    return Object.freeze({ authorized: true, defaultModel, timeoutMs });
+  } catch {
+    return disabledPermissionJudge();
+  }
+}
+
+function readProjectPermissionJudge(value: unknown): Omit<ProjectFileConfig, "gateConfig"> {
+  if (value === undefined) {
+    return { judgeDisabled: false };
+  }
+  if (
+    !isRecord(value) ||
+    !hasOnlyKeys(value, ["enabled", "timeoutMs"]) ||
+    (value.enabled !== undefined && value.enabled !== false)
+  ) {
+    return { judgeDisabled: true };
+  }
+
+  const timeoutMs =
+    value.timeoutMs === undefined ? undefined : readJudgeTimeout(value.timeoutMs);
+  if (value.timeoutMs !== undefined && timeoutMs === undefined) {
+    return { judgeDisabled: true };
+  }
+  return {
+    judgeDisabled: value.enabled === false,
+    judgeTimeoutMs: timeoutMs,
+  };
+}
+
+function resolvePermissionJudge(
+  global: PermissionJudgeAuthorization,
+  project?: ProjectFileConfig,
+): PermissionJudgeAuthorization {
+  if (!global.authorized || project?.judgeDisabled) {
+    return disabledPermissionJudge();
+  }
+  if (
+    project?.judgeTimeoutMs !== undefined &&
+    project.judgeTimeoutMs > global.timeoutMs
+  ) {
+    return disabledPermissionJudge();
+  }
+  return Object.freeze({
+    authorized: true,
+    defaultModel: global.defaultModel,
+    timeoutMs: project?.judgeTimeoutMs ?? global.timeoutMs,
+  });
+}
+
+function readJudgeTimeout(value: unknown): number | undefined {
+  return typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= MIN_JUDGE_TIMEOUT_MS &&
+    value <= MAX_JUDGE_TIMEOUT_MS
+    ? value
+    : undefined;
+}
+
+function disabledPermissionJudge(): PermissionJudgeAuthorization {
+  return Object.freeze({ authorized: false });
 }
 
 function readOptionalJson(path: string): unknown {

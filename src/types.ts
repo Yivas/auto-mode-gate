@@ -78,6 +78,27 @@ export interface PermissionJudge {
   evaluate(request: PermissionJudgeRequest, signal: AbortSignal): Promise<unknown>;
 }
 
+export interface PermissionJudgeModelReference {
+  readonly provider: string;
+  readonly id: string;
+}
+
+export type PermissionJudgeAuthorization =
+  | { readonly authorized: false }
+  | {
+      readonly authorized: true;
+      readonly defaultModel: PermissionJudgeModelReference;
+      readonly timeoutMs: number;
+    };
+
+export interface PermissionJudgeSessionStatus {
+  readonly authorized: boolean;
+  readonly available: boolean;
+  readonly enabled: boolean;
+  readonly model?: PermissionJudgeModelReference;
+  readonly reason?: "not-authorized" | "model-unavailable";
+}
+
 export interface ActionContext {
   readonly interactive?: boolean;
 }

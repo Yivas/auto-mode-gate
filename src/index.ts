@@ -8,6 +8,10 @@ export {
 } from "./judge.ts";
 export { AutoModeGateOpenCodePlugin, createOpenCodeHooks, createOpenCodePlugin } from "./opencode.ts";
 export { createPiExtension } from "./pi.ts";
+export {
+  PermissionJudgeSession,
+  createPermissionJudgeModelReference,
+} from "./session.ts";
 export type {
   AdapterEvaluation,
   AdapterOptions,
@@ -24,7 +28,9 @@ export type {
   PiAdapterOptionsResolver,
   PiExtension,
   PiExtensionAPI,
+  PiExtensionCommand,
   PiExtensionContext,
+  PiModel,
   PiToolCallBlock,
   PiToolCallEvent,
 } from "./pi.ts";
@@ -47,15 +53,18 @@ export type {
   PermissionAssessmentState,
   PermissionJudge,
   PermissionJudgeArgumentKind,
+  PermissionJudgeAuthorization,
   PermissionJudgeDecisionCode,
   PermissionJudgeDecisionSource,
   PermissionJudgeFailure,
+  PermissionJudgeModelReference,
   PermissionJudgeOperation,
   PermissionJudgeOptionRisk,
   PermissionJudgeOutcome,
   PermissionJudgeRequest,
   PermissionJudgeResponse,
   PermissionJudgeSanitizedRequest,
+  PermissionJudgeSessionStatus,
   PermissionJudgeVerdict,
   PolicyVerdict,
   Shell,

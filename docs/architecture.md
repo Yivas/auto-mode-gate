@@ -78,6 +78,12 @@ oversized files, and unknown keys fail closed. Missing global configuration defa
 without shell evidence or trusted paths. Runtime adapters load the files when they start, so changes
 require a host restart or reload.
 
+The optional global `permissionJudge` block authorizes the capability only when it contains
+`enabled: true`, a provider/model reference, and an integer timeout from 1,000 through 120,000 ms.
+Missing or malformed authorization disables the judge. Project configuration can set
+`enabled: false` or reduce the timeout; attempts to enable, change the model, or increase the
+timeout disable the capability.
+
 ## Adapters
 
 `src/adapter.ts` contains the shared host boundary. It merges logical global/project configuration,
@@ -122,10 +128,14 @@ A strict validator accepts only the two canonical protocol responses. No adapter
 judge yet. Isolated probes found a Pi-specific model call, but no equivalent safe OpenCode API or
 host-neutral transport was verified.
 
-A later phase will add a user-selected model after host transport has tests for
-tool isolation, recursion prevention, authentication, cancellation, timeout, and strict output
-validation. Deterministic allowances and denials skip the model. Only eligible unresolved cases
-receive minimal normalized context, and a judge will never override a deterministic denial.
+Pi registers `/amg-judge` controls for session status, activation, model selection, and reset. State
+is keyed by Pi's session-manager object, starts disabled, and is never written to settings or session
+JSONL. Model selection uses `find()` and `getAvailable()` without changing the primary model.
+
+A later phase will connect host transport after tests for tool isolation, recursion prevention,
+authentication, cancellation, timeout, and strict output validation. Deterministic allowances and
+denials skip the model. Only eligible unresolved cases receive minimal normalized context, and a
+judge will never override a deterministic denial.
 
 ## Excluded systems
 

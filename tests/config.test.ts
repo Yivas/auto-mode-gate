@@ -185,6 +185,138 @@ test("trusted executable path lists have a fixed limit", async () => {
   assert.equal(rejected.blocked, true);
 });
 
+test("permission judge authorization is global, strict, and project-monotonic", async () => {
+  const fixture = await createFixture();
+  const validJudge = {
+    enabled: true,
+    model: { provider: "fictional-provider", id: "fictional-model-v1" },
+    timeoutMs: 15_000,
+  };
+
+  await writeFile(
+    fixture.globalConfigPath,
+    JSON.stringify({ mode: "enforce", permissionJudge: validJudge }),
+  );
+  assert.deepEqual(
+    loadAdapterOptions(fixture.projectDirectory, {
+      globalConfigPath: fixture.globalConfigPath,
+    }).permissionJudge,
+    {
+      authorized: true,
+      defaultModel: { provider: "fictional-provider", id: "fictional-model-v1" },
+      timeoutMs: 15_000,
+    },
+  );
+
+  for (const timeoutMs of [1_000, 120_000]) {
+    await writeFile(
+      fixture.globalConfigPath,
+      JSON.stringify({
+        mode: "enforce",
+        permissionJudge: {
+          enabled: true,
+          model: { provider: "p".repeat(64), id: "@cf/moonshotai/kimi-k2.6" },
+          timeoutMs,
+        },
+      }),
+    );
+    assert.deepEqual(
+      loadAdapterOptions(fixture.projectDirectory, {
+        globalConfigPath: fixture.globalConfigPath,
+      }).permissionJudge,
+      {
+        authorized: true,
+        defaultModel: { provider: "p".repeat(64), id: "@cf/moonshotai/kimi-k2.6" },
+        timeoutMs,
+      },
+    );
+  }
+
+  await writeFile(
+    fixture.globalConfigPath,
+    JSON.stringify({ mode: "enforce", permissionJudge: validJudge }),
+  );
+  await writeFile(
+    fixture.projectConfigPath,
+    JSON.stringify({ permissionJudge: { timeoutMs: 5_000 } }),
+  );
+  assert.deepEqual(
+    loadAdapterOptions(fixture.projectDirectory, {
+      globalConfigPath: fixture.globalConfigPath,
+    }).permissionJudge,
+    {
+      authorized: true,
+      defaultModel: { provider: "fictional-provider", id: "fictional-model-v1" },
+      timeoutMs: 5_000,
+    },
+  );
+
+  await writeFile(
+    fixture.projectConfigPath,
+    JSON.stringify({ permissionJudge: { enabled: false } }),
+  );
+  assert.deepEqual(
+    loadAdapterOptions(fixture.projectDirectory, {
+      globalConfigPath: fixture.globalConfigPath,
+    }).permissionJudge,
+    { authorized: false },
+  );
+
+  for (const permissionJudge of [
+    { enabled: true },
+    { enabled: true, model: validJudge.model, timeoutMs: 999 },
+    { enabled: true, model: { provider: "", id: "model" }, timeoutMs: 1_000 },
+    { enabled: true, model: { provider: "p".repeat(65), id: "model" }, timeoutMs: 1_000 },
+    { enabled: true, model: { provider: "provider", id: "x".repeat(129) }, timeoutMs: 1_000 },
+    { enabled: true, model: validJudge.model, timeoutMs: 120_001 },
+    { enabled: true, model: validJudge.model, timeoutMs: 1_000, credential: "secret" },
+  ]) {
+    await writeFile(
+      fixture.globalConfigPath,
+      JSON.stringify({ mode: "enforce", permissionJudge }),
+    );
+    await writeFile(fixture.projectConfigPath, "{}");
+    assert.deepEqual(
+      loadAdapterOptions(fixture.projectDirectory, {
+        globalConfigPath: fixture.globalConfigPath,
+      }).permissionJudge,
+      { authorized: false },
+    );
+  }
+
+  await writeFile(
+    fixture.globalConfigPath,
+    JSON.stringify({ mode: "enforce", permissionJudge: validJudge }),
+  );
+  for (const projectJudge of [
+    { enabled: true },
+    { model: validJudge.model },
+    { timeoutMs: 20_000 },
+    { timeoutMs: 999 },
+    { unexpected: true },
+  ]) {
+    await writeFile(
+      fixture.projectConfigPath,
+      JSON.stringify({ permissionJudge: projectJudge }),
+    );
+    assert.deepEqual(
+      loadAdapterOptions(fixture.projectDirectory, {
+        globalConfigPath: fixture.globalConfigPath,
+      }).permissionJudge,
+      { authorized: false },
+    );
+  }
+
+  await writeFile(fixture.globalConfigPath, JSON.stringify({ mode: "enforce" }));
+  await writeFile(fixture.projectConfigPath, "{}");
+  assert.deepEqual(
+    loadAdapterOptions(fixture.projectDirectory, {
+      globalConfigPath: fixture.globalConfigPath,
+    }).permissionJudge,
+    { authorized: false },
+  );
+});
+
 test("the default global path follows XDG and Windows application data", () => {
   assert.equal(
     getDefaultGlobalConfigPath({ XDG_CONFIG_HOME: "/tmp/xdg" }, "linux", "/home/test"),

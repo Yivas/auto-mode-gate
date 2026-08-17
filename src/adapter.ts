@@ -5,6 +5,7 @@ import type {
   GateConfig,
   GateDecision,
   KnownHost,
+  PermissionJudgeAuthorization,
   Shell,
   VerifiedExecutable,
 } from "./types.ts";
@@ -13,6 +14,7 @@ export interface AdapterOptions {
   readonly shell?: Shell;
   readonly globalConfig?: GateConfig;
   readonly projectConfig?: Partial<GateConfig>;
+  readonly permissionJudge?: PermissionJudgeAuthorization;
   readonly onDecision?: (log: DecisionLogRecord) => void;
 }
 
