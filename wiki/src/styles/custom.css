@@ -12,7 +12,9 @@
 
 @media (min-width: 72rem) {
   :root {
-    --sl-content-width: 75rem;
+    --sl-content-width: calc(
+      100vw - var(--sl-sidebar-width) - var(--sl-sidebar-width)
+    );
   }
 }
 
