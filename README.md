@@ -45,7 +45,21 @@ Install for the current project:
 opencode plugin auto-mode-gate@0.1.0
 ```
 
-Add `--global` to install it for every project. Verify the resolved `plugin` list:
+Add `--global` to install it for every project.
+
+You can also declare the package in the `plugin` array of your project or global `opencode.json`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["auto-mode-gate@0.1.0"]
+}
+```
+
+Merge that entry into an existing `plugin` array without removing other plugins or configuration.
+OpenCode resolves npm plugins declared in the file when it starts.
+
+Verify the resolved `plugin` list:
 
 ```text
 opencode debug config

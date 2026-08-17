@@ -15,7 +15,20 @@ Install for the current project:
 opencode plugin auto-mode-gate@0.1.0
 ```
 
-Add `--global` to install it for every project. Verify the resolved plugin list:
+Add `--global` to install it for every project.
+
+You can also declare the package in the `plugin` array of your project or global `opencode.json`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["auto-mode-gate@0.1.0"]
+}
+```
+
+Merge that entry into an existing `plugin` array without removing other plugins or configuration. OpenCode resolves npm plugins declared in the file when it starts.
+
+Verify the resolved plugin list:
 
 ```text
 opencode debug config
@@ -108,7 +121,7 @@ pi remove npm:auto-mode-gate
 pi remove npm:auto-mode-gate -l
 ```
 
-OpenCode 1.18.18 has no plugin removal subcommand. Use `opencode debug config`, remove only the matching Auto Mode Gate plugin item from its resolved configuration, restart OpenCode, and confirm that the plugin no longer appears.
+OpenCode 1.18.18 has no plugin removal subcommand. Use `opencode debug config` to locate the configuration that supplied the plugin, remove only the matching Auto Mode Gate entry from its `plugin` array, restart OpenCode, and confirm that the plugin no longer appears.
 
 For a source installation, delete only the loader created for Auto Mode Gate:
 
