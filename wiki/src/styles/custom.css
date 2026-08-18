@@ -10,6 +10,12 @@
   --sl-color-accent-high: #dbeafe;
 }
 
+@media (min-width: 50rem) {
+  .hero:not(:has(> img, > .hero-html)) {
+    grid-template-columns: 100%;
+  }
+}
+
 @media (min-width: 72rem) {
   :root {
     --sl-content-width: calc(
