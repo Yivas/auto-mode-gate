@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test, { type TestContext } from "node:test";
@@ -37,7 +37,7 @@ test("package manifest exposes the OpenCode and Pi runtime entries", async () =>
 });
 
 test("configured OpenCode and Pi runtimes honor host activation, modes, and precedence", async (t) => {
-  const root = await mkdtemp(join(tmpdir(), "auto-mode-gate-runtime-"));
+  const root = await createTemporaryRoot(t, "auto-mode-gate-runtime-");
   const xdgConfigHome = join(root, "xdg");
   const configDirectory = join(xdgConfigHome, "auto-mode-gate");
   const shadowProject = join(root, "shadow-project");
@@ -85,7 +85,7 @@ test("configured OpenCode and Pi runtimes honor host activation, modes, and prec
 });
 
 test("both runtime entries preserve the complete configuration precedence", async (t) => {
-  const root = await mkdtemp(join(tmpdir(), "auto-mode-gate-precedence-"));
+  const root = await createTemporaryRoot(t, "auto-mode-gate-precedence-");
   const xdgConfigHome = join(root, "xdg");
   const configDirectory = join(xdgConfigHome, "auto-mode-gate");
   await mkdir(configDirectory, { recursive: true });
@@ -128,7 +128,7 @@ test("both runtime entries preserve the complete configuration precedence", asyn
 });
 
 test("both runtime entries fail closed on malformed configuration and log errors", async (t) => {
-  const root = await mkdtemp(join(tmpdir(), "auto-mode-gate-runtime-errors-"));
+  const root = await createTemporaryRoot(t, "auto-mode-gate-runtime-errors-");
   const xdgConfigHome = join(root, "xdg");
   const configDirectory = join(xdgConfigHome, "auto-mode-gate");
   await mkdir(configDirectory, { recursive: true });
@@ -154,8 +154,32 @@ test("both runtime entries fail closed on malformed configuration and log errors
   }
 });
 
+test("both runtimes sanitize migration failures before blocking", async (t) => {
+  const root = await createTemporaryRoot(t, "auto-mode-gate-runtime-migration-error-");
+  const legacyRoot = join(root, "legacy");
+  const legacyDirectory = join(legacyRoot, "auto-mode-gate");
+  await mkdir(legacyDirectory, { recursive: true });
+  await writeFile(join(legacyDirectory, "config.json"), "{ invalid legacy with fictional path");
+  useLegacyRoot(t, legacyRoot);
+  const hostRoots = await useHostRoots(t, root);
+
+  for (const host of ["opencode", "pi"] as const) {
+    const project = join(root, `${host}-migration-project`);
+    await mkdir(project);
+    const reason = await runtimeReason(host, project, dangerousCommand) ?? "";
+    assert.match(reason, /AMG_DENY_INTERNAL_ERROR/u);
+    assert.equal(reason.includes(root), false);
+    assert.equal(reason.includes("fictional path"), false);
+    assert.equal(
+      await readFile(join(legacyDirectory, "config.json"), "utf8"),
+      "{ invalid legacy with fictional path",
+    );
+    await assert.rejects(readFile(join(hostRoots[host], "auto-mode-gate.json")));
+  }
+});
+
 test("configured runtimes fail closed when project context is unavailable", async (t) => {
-  const root = await mkdtemp(join(tmpdir(), "auto-mode-gate-missing-context-"));
+  const root = await createTemporaryRoot(t, "auto-mode-gate-missing-context-");
   const xdgConfigHome = join(root, "xdg");
   const configDirectory = join(xdgConfigHome, "auto-mode-gate");
   await mkdir(configDirectory, { recursive: true });
@@ -190,6 +214,12 @@ test("OpenCode installs a fail-closed hook when its directory cannot be read", a
     /AMG_DENY_INTERNAL_ERROR/u,
   );
 });
+
+async function createTemporaryRoot(t: TestContext, prefix: string): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), prefix));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  return root;
+}
 
 async function writeRuntimeConfig(
   host: "opencode" | "pi",
@@ -265,6 +295,19 @@ function useXdgConfig(t: TestContext, xdgConfigHome: string): void {
     } else {
       process.env.XDG_CONFIG_HOME = previousXdg;
     }
+  });
+}
+
+function useLegacyRoot(t: TestContext, legacyRoot: string): void {
+  const previousXdg = process.env.XDG_CONFIG_HOME;
+  const previousApplicationData = process.env.APPDATA;
+  process.env.XDG_CONFIG_HOME = legacyRoot;
+  process.env.APPDATA = legacyRoot;
+  t.after(() => {
+    if (previousXdg === undefined) delete process.env.XDG_CONFIG_HOME;
+    else process.env.XDG_CONFIG_HOME = previousXdg;
+    if (previousApplicationData === undefined) delete process.env.APPDATA;
+    else process.env.APPDATA = previousApplicationData;
   });
 }
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdir, mkdtemp, readFile, readdir, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, posix, win32 } from "node:path";
 import test from "node:test";
@@ -21,9 +21,17 @@ const trustedGit =
   process.platform === "win32" ? "C:\\trusted\\git.exe" : "/trusted/bin/git";
 const untrustedGit =
   process.platform === "win32" ? "C:\\untrusted\\git.exe" : "/untrusted/bin/git";
+const fixtureRoots = new Set<string>();
+
+test.afterEach(async () => {
+  const roots = [...fixtureRoots];
+  fixtureRoots.clear();
+  await Promise.all(roots.map((root) => rm(root, { recursive: true, force: true })));
+});
 
 async function createFixture() {
   const root = await mkdtemp(join(tmpdir(), "auto-mode-gate-config-"));
+  fixtureRoots.add(root);
   const projectDirectory = join(root, "project");
   await mkdir(projectDirectory);
   return {
@@ -529,7 +537,15 @@ test("the default global path follows host-owned roots", () => {
     posix.join("/home/test", ".config", "opencode", "auto-mode-gate.json"),
   );
   assert.equal(
+    getDefaultGlobalConfigPath("opencode", { OPENCODE_CONFIG_DIR: "   " }, "linux", "/home/test"),
+    posix.join("/home/test", ".config", "opencode", "auto-mode-gate.json"),
+  );
+  assert.equal(
     getDefaultGlobalConfigPath("pi", {}, "win32", "C:\\Users\\Test"),
+    win32.join("C:\\Users\\Test", ".pi", "agent", "auto-mode-gate.json"),
+  );
+  assert.equal(
+    getDefaultGlobalConfigPath("pi", { PI_CODING_AGENT_DIR: "" }, "win32", "C:\\Users\\Test"),
     win32.join("C:\\Users\\Test", ".pi", "agent", "auto-mode-gate.json"),
   );
   assert.throws(
@@ -540,4 +556,64 @@ test("the default global path follows host-owned roots", () => {
     () => getDefaultGlobalConfigPath("pi", { PI_CODING_AGENT_DIR: "." }, "win32", "C:\\Users\\Test"),
     /Invalid absolute path/u,
   );
+});
+
+test("configured host roots must be regular readable directories", async (t) => {
+  const fixture = await createFixture();
+  const hostRoot = join(fixture.root, "host-root");
+  await mkdir(hostRoot);
+  for (const host of ["opencode", "pi"] as const) {
+    const environment = host === "opencode"
+      ? { OPENCODE_CONFIG_DIR: hostRoot }
+      : { PI_CODING_AGENT_DIR: hostRoot };
+    assert.equal(
+      getDefaultGlobalConfigPath(host, environment),
+      join(hostRoot, "auto-mode-gate.json"),
+    );
+  }
+
+  const fileRoot = join(fixture.root, "host-file");
+  await writeFile(fileRoot, "file");
+  for (const host of ["opencode", "pi"] as const) {
+    const fileEnvironment = host === "opencode"
+      ? { OPENCODE_CONFIG_DIR: fileRoot }
+      : { PI_CODING_AGENT_DIR: fileRoot };
+    assert.throws(
+      () => getDefaultGlobalConfigPath(host, fileEnvironment),
+      /regular directory/u,
+    );
+  }
+
+  const symlinkRoot = join(fixture.root, "host-link");
+  try {
+    await symlink(hostRoot, symlinkRoot, process.platform === "win32" ? "junction" : "dir");
+    for (const host of ["opencode", "pi"] as const) {
+      const symlinkEnvironment = host === "opencode"
+        ? { OPENCODE_CONFIG_DIR: symlinkRoot }
+        : { PI_CODING_AGENT_DIR: symlinkRoot };
+      assert.throws(
+        () => getDefaultGlobalConfigPath(host, symlinkEnvironment),
+        /regular directory/u,
+      );
+    }
+  } catch (error) {
+    if (typeof error === "object" && error !== null && (error as { code?: string }).code === "EPERM") {
+      t.diagnostic("Skipping host-root symlink assertion because this Windows account cannot create it.");
+    } else {
+      throw error;
+    }
+  }
+
+  if (process.platform !== "win32" && process.getuid?.() !== 0) {
+    const unreadableRoot = join(fixture.root, "host-unreadable");
+    await mkdir(unreadableRoot);
+    await chmod(unreadableRoot, 0o000);
+    t.after(() => chmod(unreadableRoot, 0o700));
+    const unreadableEnvironment = { OPENCODE_CONFIG_DIR: unreadableRoot };
+    const decision = createShellAdapter("opencode", loadAdapterOptions("opencode", undefined, {
+      env: unreadableEnvironment,
+      homeDirectory: fixture.root,
+    })).evaluate({ command: dangerousCommand }).decision;
+    assert.equal(decision.code, "AMG_DENY_INTERNAL_ERROR");
+  }
 });
