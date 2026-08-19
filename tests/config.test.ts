@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { mkdir, mkdtemp, readFile, readdir, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, posix, win32 } from "node:path";
 import test from "node:test";
@@ -372,6 +373,30 @@ test("legacy configuration migrates byte for byte without replacing the source",
   assert.equal(await readFile(legacy, "utf8"), snapshot);
 });
 
+test("concurrent processes publish one valid destination without residual temporaries", async () => {
+  const fixture = await createFixture();
+  const directory = join(fixture.root, "pi-agent");
+  const destination = join(directory, "auto-mode-gate.json");
+  const legacy = join(fixture.root, "legacy.json");
+  const snapshot = JSON.stringify({ mode: "enforce", shell: testShell });
+  await writeFile(legacy, snapshot);
+
+  const script = [
+    `import { loadAdapterOptions } from ${JSON.stringify(new URL("../src/config.ts", import.meta.url).href)};`,
+    "loadAdapterOptions('pi', undefined, { globalConfigPath: process.argv[1], legacyGlobalConfigPath: process.argv[2] });",
+  ].join("\n");
+  await Promise.all([
+    runNode(script, destination, legacy),
+    runNode(script, destination, legacy),
+  ]);
+
+  assert.equal(await readFile(destination, "utf8"), snapshot);
+  assert.deepEqual(
+    (await readdir(directory)).filter((name) => name.includes(".tmp-")),
+    [],
+  );
+});
+
 test("an existing host destination ignores invalid legacy discovery", async () => {
   const fixture = await createFixture();
   const destination = join(fixture.root, "pi-agent", "auto-mode-gate.json");
@@ -480,6 +505,23 @@ test("Windows legacy discovery prefers APPDATA over XDG_CONFIG_HOME", () => {
     win32.join("C:\\appdata", "auto-mode-gate", "config.json"),
   );
 });
+
+function runNode(script: string, ...args: string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ["--input-type=module", "--eval", script, ...args], {
+      cwd: new URL("..", import.meta.url),
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stderr = "";
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk) => { stderr += chunk; });
+    child.once("error", reject);
+    child.once("exit", (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`Child migration failed with ${code}: ${stderr}`));
+    });
+  });
+}
 
 test("the default global path follows host-owned roots", () => {
   assert.equal(
