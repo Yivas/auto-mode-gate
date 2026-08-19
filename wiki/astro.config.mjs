@@ -26,6 +26,7 @@ export default defineConfig({
             { label: 'Overview', link: '/' },
             { slug: 'getting-started/install', label: 'Install' },
             { slug: 'getting-started/configure', label: 'Configure' },
+            { slug: 'getting-started/migrate', label: 'Migrate configuration' },
           ],
         },
         {

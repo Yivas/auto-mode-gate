@@ -172,18 +172,23 @@ packages from settings.
 
 ## Configure
 
-Auto Mode Gate reads one global file and, when present, `.auto-mode-gate.json` from the project
-root. It reads configuration when each host adapter starts; restart or reload the host after a
-change.
+Auto Mode Gate keeps policy under the host that loads it. It reads configuration when an adapter
+starts; restart or reload that host after a change.
 
-Global path resolution:
+| Scope | OpenCode | Pi |
+|-|-|-|
+| Global | `$OPENCODE_CONFIG_DIR/auto-mode-gate.json`, or `~/.config/opencode/auto-mode-gate.json` | `$PI_CODING_AGENT_DIR/auto-mode-gate.json`, or `~/.pi/agent/auto-mode-gate.json` |
+| Project | `<project>/.opencode/auto-mode-gate.json` | `<project>/.pi/auto-mode-gate.json` |
 
-1. `$XDG_CONFIG_HOME/auto-mode-gate/config.json` when `XDG_CONFIG_HOME` is set;
-2. `%APPDATA%\auto-mode-gate\config.json` on Windows;
-3. `~/.config/auto-mode-gate/config.json` elsewhere.
+A non-empty host root environment variable must contain an absolute path to an existing regular
+directory. Relative roots, symlinks, and non-directory roots fail closed.
 
-Configured roots and every file path must be absolute for the current operating system. Relative
-`XDG_CONFIG_HOME` or `APPDATA` values fail closed.
+When a host-owned destination is absent, the adapter checks the `0.2.0` paths as migration sources:
+`$XDG_CONFIG_HOME/auto-mode-gate/config.json`, `%APPDATA%\auto-mode-gate\config.json` on Windows,
+`~/.config/auto-mode-gate/config.json`, and `<project>/.auto-mode-gate.json`. A valid source is
+copied byte for byte with exclusive publication. Migration never replaces a destination or deletes
+the source. Once a destination exists, it is authoritative and legacy is ignored. See the
+[migration guide](https://yivas.github.io/auto-mode-gate/getting-started/migrate/).
 
 The `permissionJudge` keys below require version `0.2.0` or later. Example global configuration:
 
@@ -294,8 +299,8 @@ Remove-Item <plugin-root>\auto-mode-gate.ts
 Remove-Item -Recurse <extension-root>\auto-mode-gate
 ```
 
-Removal does not delete `.auto-mode-gate.json`, the global Auto Mode Gate configuration, logs, or
-a source checkout. Remove those separately only when they are no longer needed.
+Removal does not delete host-owned or legacy Auto Mode Gate configuration, logs, or a source
+checkout. Remove those separately only after verifying both hosts and any required rollback path.
 
 ## Development
 

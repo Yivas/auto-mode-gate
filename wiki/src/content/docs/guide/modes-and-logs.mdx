@@ -32,6 +32,8 @@ If an `enforce` decision cannot be written to the configured log file, the tool 
 
 The adapter does not turn a log failure into silent success. This is part of the fail-closed behavior at the logging boundary.
 
+Legacy migration copies `logPath` with the rest of the validated file and does not rewrite it. If OpenCode and Pi migrate the same legacy global policy, both destinations retain that explicitly shared log path until you change one host's file.
+
 ## Next steps
 
 - [Configure a mode and log path](../../getting-started/configure/).

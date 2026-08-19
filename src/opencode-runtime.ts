@@ -3,7 +3,7 @@ import { createOpenCodeHooks, type OpenCodePlugin } from "./opencode.ts";
 
 export const AutoModeGatePlugin: OpenCodePlugin = async (input) => {
   try {
-    return createOpenCodeHooks(loadAdapterOptions(readDirectory(input)));
+    return createOpenCodeHooks(loadAdapterOptions("opencode", readDirectory(input)));
   } catch {
     return createOpenCodeHooks({
       onDecision() {

@@ -3,7 +3,7 @@ title: Verify and operate
 description: Confirm installation, understand host scope, and keep native permissions in place.
 ---
 
-OpenCode and Pi activate independently through their package entries or source loader files. Removing one installation leaves the other host unchanged.
+OpenCode and Pi activate independently through their package entries, source loader files, and host-owned policy paths. Removing one installation leaves the other host unchanged. After upgrading from `0.2.0`, [verify migration](../../getting-started/migrate/) before removing the shared legacy file.
 
 ## Verify OpenCode
 
@@ -46,6 +46,10 @@ A child process must load its own adapter. The hooks do not guarantee that a sep
 ## What happens after an allowance
 
 An allowance means that the Auto Mode Gate policy did not block the call. Native OpenCode or Pi permissions still apply after that decision. Passing the gate does not bypass or replace host permissions.
+
+## Verify configuration isolation
+
+OpenCode must ignore Pi's global and `.pi` project destinations. Pi must ignore OpenCode's global and `.opencode` destinations. An existing host-owned file also suppresses legacy discovery for that host. Test changes with harmless policy settings and restart or reload the relevant host.
 
 ## Useful checks
 

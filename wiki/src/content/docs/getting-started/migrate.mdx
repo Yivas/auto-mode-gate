@@ -1,0 +1,71 @@
+---
+title: Migrate configuration
+description: Move shared 0.2.0 policy into host-owned OpenCode and Pi paths without overwriting files.
+---
+
+Newer builds keep policy under the host that executes the hook. OpenCode and Pi can now use different global and project policy without reading each other's destination.
+
+## Legacy and destination paths
+
+| Scope | Legacy source | OpenCode destination | Pi destination |
+|-|-|-|-|
+| Global | `$XDG_CONFIG_HOME/auto-mode-gate/config.json`, `%APPDATA%\auto-mode-gate\config.json` on Windows, or `~/.config/auto-mode-gate/config.json` | `$OPENCODE_CONFIG_DIR/auto-mode-gate.json` or `~/.config/opencode/auto-mode-gate.json` | `$PI_CODING_AGENT_DIR/auto-mode-gate.json` or `~/.pi/agent/auto-mode-gate.json` |
+| Project | `<project>/.auto-mode-gate.json` | `<project>/.opencode/auto-mode-gate.json` | `<project>/.pi/auto-mode-gate.json` |
+
+## Automatic migration
+
+When a host-owned destination is absent, the adapter:
+
+1. reads the matching legacy source only if it is a regular non-symlink file;
+2. applies the same 64 KiB limit and strict parser used for normal configuration;
+3. writes the exact validated bytes to a unique temporary file beside the destination;
+4. flushes and closes the temporary file;
+5. publishes it without replacing a destination created by another process;
+6. leaves the legacy source unchanged.
+
+An existing destination is authoritative. The adapter ignores legacy even when legacy has newer or different content. Invalid destinations fail closed instead of falling back.
+
+:::caution[No automatic cleanup]
+Keep legacy until both hosts have migrated and you have verified each destination. Automatic migration never deletes, truncates, renames, or reserializes it.
+:::
+
+## Migrate manually
+
+1. Stop or reload the target host so it is not reading configuration during the copy.
+2. Confirm the destination does not exist. Do not overwrite it.
+3. Create the host-owned parent directory if needed.
+4. Copy the legacy file to the destination for that host.
+5. Start the host and verify behavior.
+6. Repeat for the other host if you use both.
+
+Use your operating system's ordinary copy command. Do not paste active configuration, paths, model names, credentials, or raw errors into public issues.
+
+## Verify and clean up
+
+- Start OpenCode and confirm it reacts only to its global and `.opencode` project files.
+- Start Pi and confirm it reacts only to its global and `.pi` project files.
+- Change a harmless test setting in one destination and confirm the other host remains unchanged.
+- Keep a private backup before deleting legacy.
+- Remove legacy only after every host you use has a valid destination and rollback is no longer required.
+
+## Roll back to 0.2.0
+
+Version `0.2.0` reads only the legacy shared paths. Leave or restore the legacy file before loading that version. Host-owned files are ignored by `0.2.0`.
+
+To retry migration in a newer build, stop the host, remove only that host's destination, keep legacy in place, and start the host again. The adapter attempts a fresh exclusive copy.
+
+## Troubleshooting
+
+- **Relative host root:** use an absolute `OPENCODE_CONFIG_DIR` or `PI_CODING_AGENT_DIR`.
+- **Missing or non-directory host root:** create a regular directory or unset the variable to use the fallback.
+- **Symlink or non-regular entry:** replace it with a regular directory or file you control.
+- **Invalid destination:** repair or remove it deliberately; the adapter will not downgrade to legacy.
+- **Unsupported publication or permissions:** migrate manually without overwriting the destination.
+- **Temporary file after interruption:** do not rename it into place. Remove it only after confirming no migration process is active.
+- **Changed configuration not loaded:** reload or restart the host.
+
+## Next steps
+
+- [Configure the gate](../configure/).
+- [Verify and operate](../../guide/verify-and-operate/).
+- [Review coverage boundaries](../../guide/coverage-and-boundaries/).

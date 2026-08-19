@@ -12,7 +12,7 @@ Auto Mode Gate is a pre-tool policy gate, not an operating-system sandbox. Its g
 - Both adapters enforce only the built-in `bash` tool.
 - Other tools remain under native host permissions.
 
-A separately launched host process must load its own adapter. The hooks do not provide verified child-process identity or guarantee that a child loaded the gate.
+A separately launched host process must load its own adapter. The hooks do not provide verified child-process identity or guarantee that a child loaded the gate. Each adapter reads only its host-owned global and project policy. Legacy paths act only as migration sources when that host's destination is absent.
 
 ## Evidence and identity
 

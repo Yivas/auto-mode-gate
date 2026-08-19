@@ -1,8 +1,9 @@
-import { appendFileSync, closeSync, openSync, readSync } from "node:fs";
+import { appendFileSync, lstatSync } from "node:fs";
 import { homedir } from "node:os";
 import { posix, win32 } from "node:path";
 
 import type { AdapterOptions } from "./adapter.ts";
+import { readOrMigrateConfig } from "./config-migration.ts";
 import {
   MAX_PERMISSION_JUDGE_TIMEOUT_MS,
   MIN_PERMISSION_JUDGE_TIMEOUT_MS,
@@ -16,14 +17,18 @@ import type {
 } from "./types.ts";
 import { createPermissionJudgeModelReference } from "./session.ts";
 
-export const PROJECT_CONFIG_NAME = ".auto-mode-gate.json";
+export const PROJECT_CONFIG_NAME = "auto-mode-gate.json";
+export const LEGACY_PROJECT_CONFIG_NAME = ".auto-mode-gate.json";
 
-const MAX_CONFIG_BYTES = 65_536;
 const MAX_TRUSTED_EXECUTABLE_PATHS = 256;
+
+export type ConfigHost = "opencode" | "pi";
 
 export interface ConfigDiscoveryOptions {
   readonly globalConfigPath?: string;
   readonly projectConfigPath?: string;
+  readonly legacyGlobalConfigPath?: string;
+  readonly legacyProjectConfigPath?: string;
   readonly env?: Readonly<Record<string, string | undefined>>;
   readonly platform?: NodeJS.Platform;
   readonly homeDirectory?: string;
@@ -42,25 +47,46 @@ interface ProjectFileConfig {
 }
 
 export function loadAdapterOptions(
+  host: ConfigHost,
   projectDirectory?: string,
   discovery: ConfigDiscoveryOptions = {},
 ): AdapterOptions {
   try {
     const platform = discovery.platform ?? process.platform;
     const path = pathForPlatform(platform);
+    const environment = discovery.env ?? process.env;
+    const homeDirectory = discovery.homeDirectory ?? homedir();
     const globalPath = discovery.globalConfigPath
       ? readAbsolutePath(discovery.globalConfigPath, platform)
-      : getDefaultGlobalConfigPath(discovery.env, platform, discovery.homeDirectory);
-    const global = parseGlobalConfig(readOptionalJson(globalPath), platform);
+      : getDefaultGlobalConfigPath(host, environment, platform, homeDirectory);
+    const globalValue = readOrMigrateConfig(
+      globalPath,
+      () => discovery.legacyGlobalConfigPath
+        ? readAbsolutePath(discovery.legacyGlobalConfigPath, platform)
+        : getLegacyGlobalConfigPath(environment, platform, homeDirectory),
+      (value) => { parseGlobalConfig(value, platform); },
+    );
+    const global = parseGlobalConfig(globalValue, platform);
+    const projectRoot = projectDirectory
+      ? readAbsolutePath(projectDirectory, platform)
+      : undefined;
     const projectPath = discovery.projectConfigPath
       ? readAbsolutePath(discovery.projectConfigPath, platform)
-      : projectDirectory
-        ? path.join(readAbsolutePath(projectDirectory, platform), PROJECT_CONFIG_NAME)
+      : projectRoot
+        ? path.join(projectRoot, host === "opencode" ? ".opencode" : ".pi", PROJECT_CONFIG_NAME)
         : undefined;
-    const project = parseProjectConfig(
-      projectPath ? readOptionalJson(projectPath) : undefined,
-      platform,
-    );
+    const projectValue = projectPath
+      ? readOrMigrateConfig(
+          projectPath,
+          () => discovery.legacyProjectConfigPath
+            ? readAbsolutePath(discovery.legacyProjectConfigPath, platform)
+            : projectRoot
+              ? path.join(projectRoot, LEGACY_PROJECT_CONFIG_NAME)
+              : undefined,
+          (value) => { parseProjectConfig(value, platform); },
+        )
+      : undefined;
+    const project = parseProjectConfig(projectValue, platform);
 
     return {
       shell: global.shell,
@@ -84,26 +110,44 @@ export function loadAdapterOptions(
 }
 
 export function getDefaultGlobalConfigPath(
+  host: ConfigHost,
   env: Readonly<Record<string, string | undefined>> = process.env,
   platform: NodeJS.Platform = process.platform,
   homeDirectory = homedir(),
 ): string {
   const path = pathForPlatform(platform);
-  const xdgConfigHome = nonEmpty(env.XDG_CONFIG_HOME);
+  const configuredRoot = nonEmpty(
+    host === "opencode" ? env.OPENCODE_CONFIG_DIR : env.PI_CODING_AGENT_DIR,
+  );
+  if (configuredRoot) {
+    const root = readAbsolutePath(configuredRoot, platform);
+    assertExistingDirectory(root);
+    return path.join(root, PROJECT_CONFIG_NAME);
+  }
+
+  const home = readAbsolutePath(homeDirectory, platform);
+  const root = host === "opencode"
+    ? path.join(home, ".config", "opencode")
+    : path.join(home, ".pi", "agent");
+  return path.join(root, PROJECT_CONFIG_NAME);
+}
+
+export function getLegacyGlobalConfigPath(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+  platform: NodeJS.Platform = process.platform,
+  homeDirectory = homedir(),
+): string {
+  const path = pathForPlatform(platform);
+  const xdgConfigHome = platform === "win32" ? undefined : nonEmpty(env.XDG_CONFIG_HOME);
   if (xdgConfigHome) {
-    return path.join(
-      readAbsolutePath(xdgConfigHome, platform),
-      "auto-mode-gate",
-      "config.json",
-    );
+    return path.join(readAbsolutePath(xdgConfigHome, platform), "auto-mode-gate", "config.json");
   }
 
   const home = readAbsolutePath(homeDirectory, platform);
   const applicationData = nonEmpty(env.APPDATA);
-  const base =
-    platform === "win32" && applicationData
-      ? readAbsolutePath(applicationData, platform)
-      : path.join(home, ".config");
+  const base = platform === "win32" && applicationData
+    ? readAbsolutePath(applicationData, platform)
+    : path.join(home, ".config");
   return path.join(base, "auto-mode-gate", "config.json");
 }
 
@@ -249,37 +293,6 @@ function disabledPermissionJudge(): PermissionJudgeAuthorization {
   return Object.freeze({ authorized: false });
 }
 
-function readOptionalJson(path: string): unknown {
-  let descriptor: number | undefined;
-  try {
-    descriptor = openSync(path, "r");
-    const buffer = Buffer.allocUnsafe(MAX_CONFIG_BYTES + 1);
-    let offset = 0;
-
-    while (offset < buffer.length) {
-      const bytesRead = readSync(descriptor, buffer, offset, buffer.length - offset, null);
-      if (bytesRead === 0) {
-        break;
-      }
-      offset += bytesRead;
-    }
-
-    if (offset > MAX_CONFIG_BYTES) {
-      throw new Error("Configuration file is too large.");
-    }
-    return JSON.parse(buffer.toString("utf8", 0, offset));
-  } catch (error) {
-    if (isFileNotFound(error)) {
-      return undefined;
-    }
-    throw error;
-  } finally {
-    if (descriptor !== undefined) {
-      closeSync(descriptor);
-    }
-  }
-}
-
 function createDecisionLogger(path: string): (log: DecisionLogRecord) => void {
   return (log) => appendFileSync(path, `${JSON.stringify(log)}\n`, "utf8");
 }
@@ -335,8 +348,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isFileNotFound(error: unknown): boolean {
-  return isRecord(error) && error.code === "ENOENT";
+function assertExistingDirectory(path: string): void {
+  const stat = lstatSync(path);
+  if (stat.isSymbolicLink() || !stat.isDirectory()) {
+    throw new Error("Configured host root is not a regular directory.");
+  }
 }
 
 function nonEmpty(value: string | undefined): string | undefined {

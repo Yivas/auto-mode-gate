@@ -1,29 +1,23 @@
 ---
 title: Configure the gate
-description: Configure global policy, trusted executable paths, and optional project tightening.
+description: Configure host-owned policy, trusted executable paths, and optional project tightening.
 ---
 
-Auto Mode Gate reads one global JSON file and, when present, `.auto-mode-gate.json` from the project root. Each host adapter reads configuration when it starts, so restart or reload the host after changing a file.
+Auto Mode Gate reads policy from the host that loads the adapter. Restart or reload that host after changing a file.
+
+## Configuration paths
+
+| Scope | OpenCode | Pi |
+|-|-|-|
+| Global | `$OPENCODE_CONFIG_DIR/auto-mode-gate.json` | `$PI_CODING_AGENT_DIR/auto-mode-gate.json` |
+| Global fallback | `~/.config/opencode/auto-mode-gate.json` | `~/.pi/agent/auto-mode-gate.json` |
+| Project | `<project>/.opencode/auto-mode-gate.json` | `<project>/.pi/auto-mode-gate.json` |
+
+An empty or absent host root uses the fallback. A non-empty root must be an absolute path to an existing regular directory. Relative roots, symlinks, and non-directory roots fail closed. OpenCode never reads the Pi destination, and Pi never reads the OpenCode destination.
+
+See [Migrate configuration](../migrate/) when upgrading from `0.2.0`.
 
 ## Global configuration
-
-On Windows, the default global path is:
-
-```text
-%APPDATA%\auto-mode-gate\config.json
-```
-
-The full resolution order is:
-
-1. `$XDG_CONFIG_HOME/auto-mode-gate/config.json` when `XDG_CONFIG_HOME` is set.
-2. `%APPDATA%\auto-mode-gate\config.json` on Windows.
-3. `~/.config/auto-mode-gate/config.json` elsewhere.
-
-Configured roots and every file path must be absolute for the current operating system. Relative roots fail closed.
-
-Package `0.2.0` supports the deterministic keys and the optional `permissionJudge` block below. Package `0.1.0` does not support that block; adding it makes the strict configuration fail closed.
-
-A global configuration for version `0.2.0` looks like this:
 
 ```json
 {
@@ -56,8 +50,6 @@ Create the log directory before starting the host when `logPath` is configured.
 
 ## Project configuration
 
-Project configuration can also disable the judge or reduce its timeout:
-
 ```json
 {
   "mode": "enforce",
@@ -72,7 +64,7 @@ Project configuration can also disable the judge or reduce its timeout:
 
 A project can tighten `shadow` to `enforce`, remove trusted paths, disable the judge, or reduce its timeout. It cannot enable a globally `off` gate, relax `enforce`, set the shell, add trust absent from the global file, set a log path, authorize the judge, change its model, or increase its timeout.
 
-Each configuration file may contain at most 64 KiB, and each trusted-path list may contain at most 256 entries. Unknown keys, invalid JSON, relative paths, oversized input, and unreadable files fail closed.
+Each configuration file may contain at most 64 KiB, and each trusted-path list may contain at most 256 entries. Unknown keys, invalid JSON, relative file paths, oversized input, and unreadable files fail closed.
 
 ## Modes
 
@@ -82,12 +74,8 @@ Each configuration file may contain at most 64 KiB, and each trusted-path list m
 
 `shadow` is an observation mode, not a security control.
 
-## Configuration failures
-
-Missing shell evidence, malformed input, malformed configuration, unsupported syntax, and internal errors fail closed. Missing or malformed judge authorization disables the judge. A configured model that Pi does not expose blocks without fallback. The gate does not resolve `PATH` or rewrite commands to manufacture executable identity.
-
 ## Next steps
 
+- [Migrate configuration](../migrate/).
 - [Understand the decision rules](../../guide/decisions/).
-- [Review modes and sanitized logs](../../guide/modes-and-logs/).
 - [Check the validated host baselines](../../reference/validated-baselines/).

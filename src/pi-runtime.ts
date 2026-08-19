@@ -2,7 +2,7 @@ import { loadAdapterOptions } from "./config.ts";
 import { createPiExtension, type PiExtension, type PiExtensionContext } from "./pi.ts";
 
 export function createConfiguredPiExtension(): PiExtension {
-  return createPiExtension((context) => loadAdapterOptions(readDirectory(context)));
+  return createPiExtension((context) => loadAdapterOptions("pi", readDirectory(context)));
 }
 
 export default createConfiguredPiExtension();

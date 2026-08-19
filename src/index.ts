@@ -34,7 +34,7 @@ export type {
   PiToolCallBlock,
   PiToolCallEvent,
 } from "./pi.ts";
-export type { ConfigDiscoveryOptions } from "./config.ts";
+export type { ConfigDiscoveryOptions, ConfigHost } from "./config.ts";
 export type {
   ActionContext,
   DecisionCode,

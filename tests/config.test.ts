@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, posix, win32 } from "node:path";
 import test from "node:test";
@@ -9,6 +9,7 @@ import {
   getDefaultGlobalConfigPath,
   loadAdapterOptions,
 } from "../src/index.ts";
+import { getLegacyGlobalConfigPath } from "../src/config.ts";
 
 const testShell = process.platform === "win32" ? "powershell" : "bash";
 const dangerousCommand =
@@ -54,8 +55,9 @@ test("file discovery applies project tightening and writes sanitized JSONL logs"
 
   const adapter = createShellAdapter(
     "pi",
-    loadAdapterOptions(fixture.projectDirectory, {
+    loadAdapterOptions("pi", fixture.projectDirectory, {
       globalConfigPath: fixture.globalConfigPath,
+      projectConfigPath: fixture.projectConfigPath,
     }),
   );
   const denied = adapter.evaluate({ command: dangerousCommand }).decision;
@@ -79,8 +81,9 @@ test("missing or malformed configuration fails closed", async () => {
   const fixture = await createFixture();
   const missing = createShellAdapter(
     "opencode",
-    loadAdapterOptions(fixture.projectDirectory, {
+    loadAdapterOptions("pi", fixture.projectDirectory, {
       globalConfigPath: fixture.globalConfigPath,
+      projectConfigPath: fixture.projectConfigPath,
     }),
   ).evaluate({ command: "rm file" }).decision;
   assert.equal(missing.code, "AMG_DENY_UNKNOWN_ACTION");
@@ -89,8 +92,9 @@ test("missing or malformed configuration fails closed", async () => {
   await writeFile(fixture.globalConfigPath, JSON.stringify({ mode: "enforce", unexpected: true }));
   const malformed = createShellAdapter(
     "opencode",
-    loadAdapterOptions(fixture.projectDirectory, {
+    loadAdapterOptions("pi", fixture.projectDirectory, {
       globalConfigPath: fixture.globalConfigPath,
+      projectConfigPath: fixture.projectConfigPath,
     }),
   ).evaluate({ command: "rm file" }).decision;
   assert.equal(malformed.code, "AMG_DENY_INTERNAL_ERROR");
@@ -111,8 +115,9 @@ test("a configured log failure blocks an otherwise allowed action", async () => 
 
   const decision = createShellAdapter(
     "pi",
-    loadAdapterOptions(fixture.projectDirectory, {
+    loadAdapterOptions("pi", fixture.projectDirectory, {
       globalConfigPath: fixture.globalConfigPath,
+      projectConfigPath: fixture.projectConfigPath,
     }),
   ).evaluate({ command: trustedRead }).decision;
 
@@ -129,8 +134,9 @@ test("configuration file size has an exact byte limit", async () => {
 
   const accepted = createShellAdapter(
     "pi",
-    loadAdapterOptions(fixture.projectDirectory, {
+    loadAdapterOptions("pi", fixture.projectDirectory, {
       globalConfigPath: fixture.globalConfigPath,
+      projectConfigPath: fixture.projectConfigPath,
     }),
   ).evaluate({ command: dangerousCommand }).decision;
   assert.equal(accepted.code, "AMG_DENY_DANGEROUS_COMMAND");
@@ -138,8 +144,9 @@ test("configuration file size has an exact byte limit", async () => {
   await writeFile(fixture.globalConfigPath, `${atLimit} `);
   const rejected = createShellAdapter(
     "pi",
-    loadAdapterOptions(fixture.projectDirectory, {
+    loadAdapterOptions("pi", fixture.projectDirectory, {
       globalConfigPath: fixture.globalConfigPath,
+      projectConfigPath: fixture.projectConfigPath,
     }),
   ).evaluate({ command: dangerousCommand }).decision;
   assert.equal(rejected.code, "AMG_DENY_INTERNAL_ERROR");
@@ -161,8 +168,9 @@ test("trusted executable path lists have a fixed limit", async () => {
 
   const allowed = createShellAdapter(
     "pi",
-    loadAdapterOptions(fixture.projectDirectory, {
+    loadAdapterOptions("pi", fixture.projectDirectory, {
       globalConfigPath: fixture.globalConfigPath,
+      projectConfigPath: fixture.projectConfigPath,
     }),
   ).evaluate({ command: trustedRead }).decision;
   assert.equal(allowed.code, "AMG_ALLOW_SAFE_COMMAND");
@@ -177,8 +185,9 @@ test("trusted executable path lists have a fixed limit", async () => {
   );
   const rejected = createShellAdapter(
     "pi",
-    loadAdapterOptions(fixture.projectDirectory, {
+    loadAdapterOptions("pi", fixture.projectDirectory, {
       globalConfigPath: fixture.globalConfigPath,
+      projectConfigPath: fixture.projectConfigPath,
     }),
   ).evaluate({ command: trustedRead }).decision;
   assert.equal(rejected.code, "AMG_DENY_INTERNAL_ERROR");
@@ -198,8 +207,9 @@ test("permission judge authorization is global, strict, and project-monotonic", 
     JSON.stringify({ mode: "enforce", permissionJudge: validJudge }),
   );
   assert.deepEqual(
-    loadAdapterOptions(fixture.projectDirectory, {
+    loadAdapterOptions("pi", fixture.projectDirectory, {
       globalConfigPath: fixture.globalConfigPath,
+      projectConfigPath: fixture.projectConfigPath,
     }).permissionJudge,
     {
       authorized: true,
@@ -221,8 +231,9 @@ test("permission judge authorization is global, strict, and project-monotonic", 
       }),
     );
     assert.deepEqual(
-      loadAdapterOptions(fixture.projectDirectory, {
+      loadAdapterOptions("pi", fixture.projectDirectory, {
         globalConfigPath: fixture.globalConfigPath,
+        projectConfigPath: fixture.projectConfigPath,
       }).permissionJudge,
       {
         authorized: true,
@@ -241,8 +252,9 @@ test("permission judge authorization is global, strict, and project-monotonic", 
     JSON.stringify({ permissionJudge: { timeoutMs: 5_000 } }),
   );
   assert.deepEqual(
-    loadAdapterOptions(fixture.projectDirectory, {
+    loadAdapterOptions("pi", fixture.projectDirectory, {
       globalConfigPath: fixture.globalConfigPath,
+      projectConfigPath: fixture.projectConfigPath,
     }).permissionJudge,
     {
       authorized: true,
@@ -256,8 +268,9 @@ test("permission judge authorization is global, strict, and project-monotonic", 
     JSON.stringify({ permissionJudge: { enabled: false } }),
   );
   assert.deepEqual(
-    loadAdapterOptions(fixture.projectDirectory, {
+    loadAdapterOptions("pi", fixture.projectDirectory, {
       globalConfigPath: fixture.globalConfigPath,
+      projectConfigPath: fixture.projectConfigPath,
     }).permissionJudge,
     { authorized: false },
   );
@@ -277,8 +290,9 @@ test("permission judge authorization is global, strict, and project-monotonic", 
     );
     await writeFile(fixture.projectConfigPath, "{}");
     assert.deepEqual(
-      loadAdapterOptions(fixture.projectDirectory, {
+      loadAdapterOptions("pi", fixture.projectDirectory, {
         globalConfigPath: fixture.globalConfigPath,
+        projectConfigPath: fixture.projectConfigPath,
       }).permissionJudge,
       { authorized: false },
     );
@@ -300,8 +314,9 @@ test("permission judge authorization is global, strict, and project-monotonic", 
       JSON.stringify({ permissionJudge: projectJudge }),
     );
     assert.deepEqual(
-      loadAdapterOptions(fixture.projectDirectory, {
+      loadAdapterOptions("pi", fixture.projectDirectory, {
         globalConfigPath: fixture.globalConfigPath,
+        projectConfigPath: fixture.projectConfigPath,
       }).permissionJudge,
       { authorized: false },
     );
@@ -310,28 +325,177 @@ test("permission judge authorization is global, strict, and project-monotonic", 
   await writeFile(fixture.globalConfigPath, JSON.stringify({ mode: "enforce" }));
   await writeFile(fixture.projectConfigPath, "{}");
   assert.deepEqual(
-    loadAdapterOptions(fixture.projectDirectory, {
+    loadAdapterOptions("pi", fixture.projectDirectory, {
       globalConfigPath: fixture.globalConfigPath,
+      projectConfigPath: fixture.projectConfigPath,
     }).permissionJudge,
     { authorized: false },
   );
 });
 
-test("the default global path follows XDG and Windows application data", () => {
+test("an explicit project destination tightens policy without a project directory", async () => {
+  const fixture = await createFixture();
+  await writeFile(
+    fixture.globalConfigPath,
+    JSON.stringify({ mode: "shadow", shell: testShell }),
+  );
+  await writeFile(
+    fixture.projectConfigPath,
+    JSON.stringify({ mode: "enforce" }),
+  );
+
+  const decision = createShellAdapter("pi", loadAdapterOptions("pi", undefined, {
+    globalConfigPath: fixture.globalConfigPath,
+    projectConfigPath: fixture.projectConfigPath,
+  })).evaluate({ command: dangerousCommand }).decision;
+
+  assert.equal(decision.mode, "enforce");
+  assert.equal(decision.blocked, true);
+});
+
+test("legacy configuration migrates byte for byte without replacing the source", async () => {
+  const fixture = await createFixture();
+  const destination = join(fixture.root, "pi-agent", "auto-mode-gate.json");
+  const legacy = join(fixture.root, "legacy.json");
+  const snapshot = `{\n  "mode": "enforce",\n  "shell": "${testShell}"\n}\n`;
+  await writeFile(legacy, snapshot);
+
+  const options = loadAdapterOptions("pi", fixture.projectDirectory, {
+    globalConfigPath: destination,
+    legacyGlobalConfigPath: legacy,
+    projectConfigPath: join(fixture.root, "missing-project.json"),
+    legacyProjectConfigPath: join(fixture.root, "missing-legacy-project.json"),
+  });
+
+  assert.equal(options.globalConfig?.mode, "enforce");
+  assert.equal(await readFile(destination, "utf8"), snapshot);
+  assert.equal(await readFile(legacy, "utf8"), snapshot);
+});
+
+test("an existing host destination ignores invalid legacy discovery", async () => {
+  const fixture = await createFixture();
+  const destination = join(fixture.root, "pi-agent", "auto-mode-gate.json");
+  const projectDestination = join(fixture.root, "project-destination.json");
+  await mkdir(join(fixture.root, "pi-agent"));
+  await writeFile(destination, JSON.stringify({ mode: "off" }));
+  await writeFile(projectDestination, "{}");
+
+  const options = loadAdapterOptions("pi", fixture.projectDirectory, {
+    globalConfigPath: destination,
+    legacyGlobalConfigPath: ".",
+    projectConfigPath: projectDestination,
+    legacyProjectConfigPath: ".",
+  });
+
+  assert.equal(options.globalConfig?.mode, "off");
+});
+
+test("an existing host destination ignores legacy and remains authoritative", async () => {
+  const fixture = await createFixture();
+  const destination = join(fixture.root, "pi-agent", "auto-mode-gate.json");
+  const legacy = join(fixture.root, "legacy.json");
+  await mkdir(join(fixture.root, "pi-agent"));
+  await writeFile(destination, JSON.stringify({ mode: "off" }));
+  await writeFile(legacy, "{ invalid json");
+
+  const options = loadAdapterOptions("pi", fixture.projectDirectory, {
+    globalConfigPath: destination,
+    legacyGlobalConfigPath: legacy,
+    projectConfigPath: join(fixture.root, "missing-project.json"),
+    legacyProjectConfigPath: join(fixture.root, "missing-legacy-project.json"),
+  });
+
+  assert.equal(options.globalConfig?.mode, "off");
+  assert.equal(await readFile(legacy, "utf8"), "{ invalid json");
+});
+
+test("invalid legacy and invalid destinations fail closed without fallback", async () => {
+  const fixture = await createFixture();
+  const destination = join(fixture.root, "pi-agent", "auto-mode-gate.json");
+  const legacy = join(fixture.root, "legacy.json");
+  await writeFile(legacy, "{ invalid json");
+
+  const migrated = createShellAdapter("pi", loadAdapterOptions("pi", fixture.projectDirectory, {
+    globalConfigPath: destination,
+    legacyGlobalConfigPath: legacy,
+    projectConfigPath: join(fixture.root, "missing-project.json"),
+    legacyProjectConfigPath: join(fixture.root, "missing-legacy-project.json"),
+  })).evaluate({ command: dangerousCommand }).decision;
+  assert.equal(migrated.code, "AMG_DENY_INTERNAL_ERROR");
+
+  await mkdir(join(fixture.root, "pi-agent"), { recursive: true });
+  await writeFile(destination, "{ invalid destination");
+  await writeFile(legacy, JSON.stringify({ mode: "off" }));
+  const existing = createShellAdapter("pi", loadAdapterOptions("pi", fixture.projectDirectory, {
+    globalConfigPath: destination,
+    legacyGlobalConfigPath: legacy,
+    projectConfigPath: join(fixture.root, "missing-project.json"),
+    legacyProjectConfigPath: join(fixture.root, "missing-legacy-project.json"),
+  })).evaluate({ command: dangerousCommand }).decision;
+  assert.equal(existing.code, "AMG_DENY_INTERNAL_ERROR");
+});
+
+test("symlink configuration sources and non-directory parents fail closed", async (t) => {
+  const fixture = await createFixture();
+  const target = join(fixture.root, "target.json");
+  const legacy = join(fixture.root, "legacy-link.json");
+  const destination = join(fixture.root, "pi-agent", "auto-mode-gate.json");
+  await writeFile(target, JSON.stringify({ mode: "off" }));
+  try {
+    await symlink(target, legacy, "file");
+  } catch (error) {
+    if (typeof error === "object" && error !== null && (error as { code?: string }).code === "EPERM") {
+      t.skip("Creating symlinks is not permitted in this Windows environment.");
+      return;
+    }
+    throw error;
+  }
+
+  const symlinkDecision = createShellAdapter("pi", loadAdapterOptions("pi", fixture.projectDirectory, {
+    globalConfigPath: destination,
+    legacyGlobalConfigPath: legacy,
+    projectConfigPath: join(fixture.root, "missing-project.json"),
+    legacyProjectConfigPath: join(fixture.root, "missing-legacy-project.json"),
+  })).evaluate({ command: dangerousCommand }).decision;
+  assert.equal(symlinkDecision.code, "AMG_DENY_INTERNAL_ERROR");
+
+  const blockedParent = join(fixture.root, "not-a-directory");
+  await writeFile(blockedParent, "file");
+  const parentDecision = createShellAdapter("pi", loadAdapterOptions("pi", fixture.projectDirectory, {
+    globalConfigPath: join(blockedParent, "auto-mode-gate.json"),
+    legacyGlobalConfigPath: target,
+    projectConfigPath: join(fixture.root, "missing-project.json"),
+    legacyProjectConfigPath: join(fixture.root, "missing-legacy-project.json"),
+  })).evaluate({ command: dangerousCommand }).decision;
+  assert.equal(parentDecision.code, "AMG_DENY_INTERNAL_ERROR");
+});
+
+test("Windows legacy discovery prefers APPDATA over XDG_CONFIG_HOME", () => {
   assert.equal(
-    getDefaultGlobalConfigPath({ XDG_CONFIG_HOME: "/tmp/xdg" }, "linux", "/home/test"),
-    posix.join("/tmp/xdg", "auto-mode-gate", "config.json"),
+    getLegacyGlobalConfigPath(
+      { XDG_CONFIG_HOME: "C:\\xdg", APPDATA: "C:\\appdata" },
+      "win32",
+      "C:\\Users\\Test",
+    ),
+    win32.join("C:\\appdata", "auto-mode-gate", "config.json"),
+  );
+});
+
+test("the default global path follows host-owned roots", () => {
+  assert.equal(
+    getDefaultGlobalConfigPath("opencode", {}, "linux", "/home/test"),
+    posix.join("/home/test", ".config", "opencode", "auto-mode-gate.json"),
   );
   assert.equal(
-    getDefaultGlobalConfigPath({ APPDATA: "C:\\Profiles\\Test" }, "win32", "C:\\Users\\Test"),
-    win32.join("C:\\Profiles\\Test", "auto-mode-gate", "config.json"),
+    getDefaultGlobalConfigPath("pi", {}, "win32", "C:\\Users\\Test"),
+    win32.join("C:\\Users\\Test", ".pi", "agent", "auto-mode-gate.json"),
   );
   assert.throws(
-    () => getDefaultGlobalConfigPath({ XDG_CONFIG_HOME: "." }, "linux", "/home/test"),
+    () => getDefaultGlobalConfigPath("opencode", { OPENCODE_CONFIG_DIR: "." }, "linux", "/home/test"),
     /Invalid absolute path/u,
   );
   assert.throws(
-    () => getDefaultGlobalConfigPath({ APPDATA: "." }, "win32", "C:\\Users\\Test"),
+    () => getDefaultGlobalConfigPath("pi", { PI_CODING_AGENT_DIR: "." }, "win32", "C:\\Users\\Test"),
     /Invalid absolute path/u,
   );
 });

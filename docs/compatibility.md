@@ -58,7 +58,10 @@ Pi 0.84.1 loaded the extension from a temporary `PI_CODING_AGENT_DIR` during
 settings byte for byte unchanged. Neither test read credentials, installed packages, or modified
 active host profiles. Runtime tests separately exercised `off`, `shadow`, `enforce`, global/project
 precedence, sanitized logs, malformed configuration, and log-write failure through both host entry
-points.
+points. Host-owned discovery tests cover independent OpenCode and Pi roots, byte-preserving legacy
+migration, destination precedence, invalid sources and destinations, and exclusive publication on
+the test filesystem. The migration rejects symlinks and non-regular entries and does not claim
+protection when another local actor controls and replaces filesystem ancestors.
 
 ## Semantic parity
 
@@ -84,8 +87,11 @@ an eligible case.
 - Only simple literal Git `diff`, `log`, `show`, and `status` requests with a configured exact path
   can become eligible; values, paths, URLs, secrets, host context, and IDs are not transported.
 - Coverage is limited to execution paths proven to pass through the documented hooks.
-- Runtime entries discover strict global and project JSON files. The npm package and source
-  installation use the same TypeScript entries; a source loader still depends on its checkout path.
+- Runtime entries discover strict host-owned global and project JSON files. A missing destination
+  may migrate from the `0.2.0` shared path by an exclusive copy; existing destinations never fall
+  back to legacy. Filesystems that cannot create the required same-filesystem hard link fail closed
+  and require manual migration. The npm package and source installation use the same TypeScript
+  entries; a source loader still depends on its checkout path.
 - The adapters require explicit shell evidence and do not rewrite bare executable names.
 - A trusted path is configuration authority, not an immutable file handle; replacing a trusted file
   between policy evaluation and execution remains outside the hook contract.

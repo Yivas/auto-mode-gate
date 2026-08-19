@@ -72,11 +72,21 @@ The logical core configuration supports `off`, `shadow`, and `enforce`:
 - `shadow` records what enforcement would decide and is not a security control;
 - `enforce` reports denied actions as blocked.
 
-`src/config.ts` discovers a global `auto-mode-gate/config.json` through `XDG_CONFIG_HOME`, Windows
-`APPDATA`, or `~/.config`, then reads `.auto-mode-gate.json` from the project root. The global file
-owns the shell, mode, exact trusted executable paths, and optional log path. Project configuration
-may remove trusted paths and tighten `shadow` to `enforce`; it cannot set the shell or log path, add
-trust absent from the global file, activate a globally disabled gate, or relax `enforce`.
+`src/config.ts` requires the runtime to identify itself as `opencode` or `pi`. OpenCode reads
+`$OPENCODE_CONFIG_DIR/auto-mode-gate.json` or `~/.config/opencode/auto-mode-gate.json`, plus
+`<project>/.opencode/auto-mode-gate.json`. Pi uses `$PI_CODING_AGENT_DIR/auto-mode-gate.json` or
+`~/.pi/agent/auto-mode-gate.json`, plus `<project>/.pi/auto-mode-gate.json`. Neither runtime reads
+the other host's destination.
+
+When a host-owned file is absent, `src/config-migration.ts` may copy the corresponding `0.2.0`
+legacy file after strict parsing. It writes a unique same-directory temporary file, flushes and
+closes it, then publishes through an exclusive hard link. The destination is never truncated or
+replaced, and the legacy bytes remain unchanged. An existing destination is authoritative. Invalid,
+unreadable, oversized, symlink, or non-regular entries fail closed without fallback. The global
+file owns the shell, mode, exact trusted executable paths, and optional log path. Project
+configuration may remove trusted paths and tighten `shadow` to `enforce`; it cannot set the shell
+or log path, add trust absent from the global file, activate a globally disabled gate, or relax
+`enforce`.
 
 Both files use strict JSON keys and paths that are absolute for the current operating system. A
 configuration file may contain at most 64 KiB, and each trusted-path list may contain at most 256

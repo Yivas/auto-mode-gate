@@ -47,12 +47,11 @@ test("configured OpenCode and Pi runtimes honor host activation, modes, and prec
   await mkdir(shadowProject);
   await mkdir(enforceProject);
   useXdgConfig(t, xdgConfigHome);
+  const hostRoots = await useHostRoots(t, root);
 
-  await writeFile(
-    join(configDirectory, "config.json"),
-    JSON.stringify({ mode: "shadow", shell: "bash", logPath }),
-  );
-  await writeFile(join(enforceProject, ".auto-mode-gate.json"), JSON.stringify({ mode: "enforce" }));
+  await writeHostGlobals(hostRoots, { mode: "shadow", shell: "bash", logPath });
+  await mkdir(join(enforceProject, ".pi"));
+  await writeFile(join(enforceProject, ".pi", "auto-mode-gate.json"), JSON.stringify({ mode: "enforce" }));
 
   const openCodeHooks = await AutoModeGatePlugin({ directory: shadowProject });
   await openCodeHooks["tool.execute.before"](
@@ -68,7 +67,7 @@ test("configured OpenCode and Pi runtimes honor host activation, modes, and prec
   assert.match(piResult?.reason ?? "", /AMG_DENY_DANGEROUS_COMMAND/u);
 
   await writeFile(
-    join(configDirectory, "config.json"),
+    join(hostRoots.opencode, "auto-mode-gate.json"),
     JSON.stringify({ mode: "off", shell: "bash", logPath }),
   );
   const offHooks = await AutoModeGatePlugin({ directory: enforceProject });
@@ -91,12 +90,13 @@ test("both runtime entries preserve the complete configuration precedence", asyn
   const configDirectory = join(xdgConfigHome, "auto-mode-gate");
   await mkdir(configDirectory, { recursive: true });
   useXdgConfig(t, xdgConfigHome);
+  const hostRoots = await useHostRoots(t, root);
 
   for (const host of ["opencode", "pi"] as const) {
     const project = join(root, `${host}-project`);
     await mkdir(project);
 
-    await writeRuntimeConfig(configDirectory, project,
+    await writeRuntimeConfig(host, hostRoots, project,
       { mode: "shadow", shell: testShell, trustedExecutablePaths: [trustedRead, trustedGit] },
       { mode: "enforce", trustedExecutablePaths: [trustedRead] },
     );
@@ -110,7 +110,7 @@ test("both runtime entries preserve the complete configuration precedence", asyn
     );
     assert.equal(await runtimeReason(host, project, trustedRead), undefined);
 
-    await writeRuntimeConfig(configDirectory, project,
+    await writeRuntimeConfig(host, hostRoots, project,
       { mode: "enforce", shell: testShell },
       { mode: "shadow" },
     );
@@ -119,7 +119,7 @@ test("both runtime entries preserve the complete configuration precedence", asyn
       /AMG_DENY_DANGEROUS_COMMAND/u,
     );
 
-    await writeRuntimeConfig(configDirectory, project,
+    await writeRuntimeConfig(host, hostRoots, project,
       { mode: "off", shell: testShell },
       { mode: "enforce" },
     );
@@ -133,16 +133,17 @@ test("both runtime entries fail closed on malformed configuration and log errors
   const configDirectory = join(xdgConfigHome, "auto-mode-gate");
   await mkdir(configDirectory, { recursive: true });
   useXdgConfig(t, xdgConfigHome);
+  const hostRoots = await useHostRoots(t, root);
 
   for (const host of ["opencode", "pi"] as const) {
     const project = join(root, `${host}-project`);
     await mkdir(project);
 
-    await writeFile(join(configDirectory, "config.json"), "{ invalid json");
+    await writeFile(join(hostRoots[host], "auto-mode-gate.json"), "{ invalid json");
     assert.match(await runtimeReason(host, project, "rm file") ?? "", /AMG_DENY_INTERNAL_ERROR/u);
 
     await writeFile(
-      join(configDirectory, "config.json"),
+      join(hostRoots[host], "auto-mode-gate.json"),
       JSON.stringify({
         mode: "enforce",
         shell: "bash",
@@ -159,6 +160,7 @@ test("configured runtimes fail closed when project context is unavailable", asyn
   const configDirectory = join(xdgConfigHome, "auto-mode-gate");
   await mkdir(configDirectory, { recursive: true });
   useXdgConfig(t, xdgConfigHome);
+  await useHostRoots(t, root);
   await writeFile(
     join(configDirectory, "config.json"),
     JSON.stringify({ mode: "shadow", shell: "bash" }),
@@ -190,13 +192,49 @@ test("OpenCode installs a fail-closed hook when its directory cannot be read", a
 });
 
 async function writeRuntimeConfig(
-  configDirectory: string,
+  host: "opencode" | "pi",
+  hostRoots: Record<"opencode" | "pi", string>,
   projectDirectory: string,
   globalConfig: Record<string, unknown>,
   projectConfig: Record<string, unknown>,
 ): Promise<void> {
-  await writeFile(join(configDirectory, "config.json"), JSON.stringify(globalConfig));
-  await writeFile(join(projectDirectory, ".auto-mode-gate.json"), JSON.stringify(projectConfig));
+  const projectConfigDirectory = join(projectDirectory, host === "opencode" ? ".opencode" : ".pi");
+  await mkdir(projectConfigDirectory, { recursive: true });
+  await writeFile(join(hostRoots[host], "auto-mode-gate.json"), JSON.stringify(globalConfig));
+  await writeFile(join(projectConfigDirectory, "auto-mode-gate.json"), JSON.stringify(projectConfig));
+}
+
+async function useHostRoots(
+  t: TestContext,
+  root: string,
+): Promise<Record<"opencode" | "pi", string>> {
+  const roots = {
+    opencode: join(root, "opencode-config"),
+    pi: join(root, "pi-agent"),
+  };
+  await mkdir(roots.opencode, { recursive: true });
+  await mkdir(roots.pi, { recursive: true });
+  const previousOpenCode = process.env.OPENCODE_CONFIG_DIR;
+  const previousPi = process.env.PI_CODING_AGENT_DIR;
+  process.env.OPENCODE_CONFIG_DIR = roots.opencode;
+  process.env.PI_CODING_AGENT_DIR = roots.pi;
+  t.after(() => {
+    if (previousOpenCode === undefined) delete process.env.OPENCODE_CONFIG_DIR;
+    else process.env.OPENCODE_CONFIG_DIR = previousOpenCode;
+    if (previousPi === undefined) delete process.env.PI_CODING_AGENT_DIR;
+    else process.env.PI_CODING_AGENT_DIR = previousPi;
+  });
+  return roots;
+}
+
+async function writeHostGlobals(
+  roots: Record<"opencode" | "pi", string>,
+  config: Record<string, unknown>,
+): Promise<void> {
+  await Promise.all([
+    writeFile(join(roots.opencode, "auto-mode-gate.json"), JSON.stringify(config)),
+    writeFile(join(roots.pi, "auto-mode-gate.json"), JSON.stringify(config)),
+  ]);
 }
 
 async function runtimeReason(
