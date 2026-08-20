@@ -7,7 +7,11 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'Auto Mode Gate',
-      description: 'Deterministic Bash permission gate for OpenCode and Pi.',
+      description: 'Deterministic-first Bash permission control for OpenCode and Pi.',
+      logo: {
+        src: './src/assets/auto-mode-gate.svg',
+        alt: 'Auto Mode Gate',
+      },
       customCss: ['./src/styles/custom.css'],
       editLink: {
         baseUrl: 'https://github.com/Yivas/auto-mode-gate/edit/main/wiki/',

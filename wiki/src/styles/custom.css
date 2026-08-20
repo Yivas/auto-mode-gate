@@ -2,12 +2,51 @@
   --sl-color-accent-low: #dbeafe;
   --sl-color-accent: #2563eb;
   --sl-color-accent-high: #1e3a8a;
+  --amg-hero-grid: color-mix(in srgb, var(--sl-color-accent) 9%, transparent);
+  --amg-hero-surface: color-mix(
+    in srgb,
+    var(--sl-color-accent-low) 34%,
+    var(--sl-color-bg)
+  );
 }
 
 :root[data-theme='dark'] {
   --sl-color-accent-low: #172554;
   --sl-color-accent: #60a5fa;
   --sl-color-accent-high: #dbeafe;
+  --amg-hero-grid: color-mix(in srgb, var(--sl-color-accent) 12%, transparent);
+  --amg-hero-surface: color-mix(
+    in srgb,
+    var(--sl-color-accent-low) 38%,
+    var(--sl-color-bg)
+  );
+}
+
+.hero {
+  overflow: hidden;
+  margin-block-start: 1rem;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 1.25rem;
+  background-color: var(--amg-hero-surface);
+  background-image:
+    linear-gradient(to right, var(--amg-hero-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--amg-hero-grid) 1px, transparent 1px);
+  background-size: 2rem 2rem;
+  box-shadow: var(--sl-shadow-md);
+}
+
+.hero > img {
+  filter: drop-shadow(
+    0 1rem 1.5rem color-mix(in srgb, var(--sl-color-accent-high) 24%, transparent)
+  );
+}
+
+.release-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 @media (min-width: 50rem) {

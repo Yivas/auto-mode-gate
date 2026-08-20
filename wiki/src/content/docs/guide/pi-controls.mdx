@@ -3,7 +3,26 @@ title: Use Pi judge controls
 description: Persist Auto, judge model, thinking, and shortcuts without changing Pi's primary model.
 ---
 
-Version 0.4.0 adds global controls for the Pi permission judge. These controls require Pi 0.84.2. They select the secondary model used for eligible permission decisions and never change Pi's primary conversation model or thinking level.
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Version 0.4.0 adds global controls for the Pi permission judge. These controls require Pi 0.84.2.
+They select the secondary model used for eligible permission decisions and never change Pi's primary
+conversation model or thinking level.
+
+<CardGrid>
+  <Card title="Auto" icon="approve-check-circle">
+    Request or disable model-assisted decisions without changing global authorization.
+  </Card>
+  <Card title="Judge model" icon="setting">
+    Search Pi's current model scope and choose the secondary model used by the gate.
+  </Card>
+  <Card title="Thinking" icon="information">
+    Select `inherit`, `off`, or a level supported by the chosen judge model.
+  </Card>
+  <Card title="Shortcuts" icon="forward-slash">
+    Open the menu or toggle requested Auto with configurable global bindings.
+  </Card>
+</CardGrid>
 
 :::caution[Preferences do not grant permission]
 The global policy file must still authorize the judge. A project can disable it. Persisted preferences cannot enable a judge that policy does not authorize or relax a project restriction.
