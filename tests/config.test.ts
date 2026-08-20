@@ -608,12 +608,15 @@ test("configured host roots must be regular readable directories", async (t) => 
     const unreadableRoot = join(fixture.root, "host-unreadable");
     await mkdir(unreadableRoot);
     await chmod(unreadableRoot, 0o000);
-    t.after(() => chmod(unreadableRoot, 0o700));
-    const unreadableEnvironment = { OPENCODE_CONFIG_DIR: unreadableRoot };
-    const decision = createShellAdapter("opencode", loadAdapterOptions("opencode", undefined, {
-      env: unreadableEnvironment,
-      homeDirectory: fixture.root,
-    })).evaluate({ command: dangerousCommand }).decision;
-    assert.equal(decision.code, "AMG_DENY_INTERNAL_ERROR");
+    try {
+      const unreadableEnvironment = { OPENCODE_CONFIG_DIR: unreadableRoot };
+      const decision = createShellAdapter("opencode", loadAdapterOptions("opencode", undefined, {
+        env: unreadableEnvironment,
+        homeDirectory: fixture.root,
+      })).evaluate({ command: dangerousCommand }).decision;
+      assert.equal(decision.code, "AMG_DENY_INTERNAL_ERROR");
+    } finally {
+      await chmod(unreadableRoot, 0o700);
+    }
   }
 });
