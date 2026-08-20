@@ -6,6 +6,18 @@ the judge model, and thinking without changing the primary conversation model. I
 host-owned policy paths and safe migration introduced in 0.3.0. Version 0.1.0 remains the
 deterministic-only release.
 
+## Highlights
+
+- Apply deterministic policy before any model-assisted permission decision.
+- Allow only narrow read-only commands with an exact trusted executable path; unknown or missing
+  evidence fails closed.
+- Keep OpenCode and Pi policy under separate host-owned global and project paths, with safe migration
+  from the shared 0.2.0 files.
+- Persist Pi Auto, judge model, thinking, and shortcuts without changing the primary conversation
+  model.
+- Record optional sanitized decision metadata without commands, arguments, prompts, secrets,
+  session IDs, or telemetry.
+
 ## Status
 
 The core, OpenCode plugin, Pi extension, file-based configuration, sanitized JSONL logs, and
