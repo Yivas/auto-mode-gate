@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.4.1 - 2026-08-20
+
+- Refresh the README with a product header, direct navigation, clearer highlights, and npm-safe links.
+- Point package and GitHub metadata to the documentation site and expand package discovery keywords.
+- Polish the Starlight overview, host installation flow, and Pi controls guide without changing runtime behavior or compatibility.
+
 ## 0.4.0 - 2026-08-20
 
 - Add global Pi preferences for Auto, judge model, thinking, and shortcuts without changing judge authorization.

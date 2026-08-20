@@ -8,7 +8,7 @@ hero:
     file: ../../assets/auto-mode-gate.svg
     alt: Auto Mode Gate
   actions:
-    - text: Install 0.4.0
+    - text: Install 0.4.1
       link: ./getting-started/install/
       icon: right-arrow
       variant: primary
@@ -20,7 +20,7 @@ hero:
 import { Badge, Card, CardGrid, LinkCard, Steps } from '@astrojs/starlight/components';
 
 <p class="release-badges">
-  <Badge text="Current release: 0.4.0" variant="success" />
+  <Badge text="Current release: 0.4.1" variant="success" />
   <Badge text="MIT" variant="note" />
 </p>
 
@@ -76,9 +76,10 @@ must load its own adapter, and coverage is limited to the documented hook paths.
 A model decision never overrides a deterministic denial. Native host permissions still apply after
 an Auto Mode Gate allowance.
 
-## Pi controls in 0.4.0
+## Pi controls in 0.4.1
 
-Version 0.4.0 persists requested Auto state, judge model, thinking, and shortcuts across Pi sessions.
+Introduced in 0.4.0 and unchanged in 0.4.1, the controls persist requested Auto state, judge model,
+thinking, and shortcuts across Pi sessions.
 Requested and effective state stay separate, so project restrictions, missing model scope, or an
 unsupported thinking level can disable effective Auto without erasing the user's choice.
 

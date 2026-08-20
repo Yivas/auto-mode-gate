@@ -1,14 +1,14 @@
 {
   "name": "auto-mode-gate",
-  "version": "0.4.0",
-  "description": "Deterministic permission gate for OpenCode and Pi",
+  "version": "0.4.1",
+  "description": "Deterministic-first permission control for OpenCode and Pi",
   "type": "module",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Yivas/auto-mode-gate.git"
   },
-  "homepage": "https://github.com/Yivas/auto-mode-gate#readme",
+  "homepage": "https://yivas.github.io/auto-mode-gate/",
   "bugs": {
     "url": "https://github.com/Yivas/auto-mode-gate/issues"
   },
@@ -28,8 +28,12 @@
     "LICENSE"
   ],
   "keywords": [
+    "ai-coding-agent",
+    "bash",
     "opencode-plugin",
-    "pi-package"
+    "permission-gate",
+    "pi-package",
+    "security"
   ],
   "pi": {
     "extensions": [

@@ -9,9 +9,9 @@ Install the package only after reviewing its source. OpenCode plugins and Pi ext
 user's system permissions.
 
 :::note[Choose the required behavior]
-Package `0.4.0` adds persistent Pi controls and retains the host-owned policy paths from 0.3.0. It
-can [migrate shared `0.2.0` configuration](../migrate/) without overwriting it. Package `0.1.0`
-remains deterministic-only and blocks all ambiguity.
+Package `0.4.1` refreshes public presentation and includes the same runtime behavior as 0.4.0:
+persistent Pi controls, host-owned policy paths, and safe migration from shared `0.2.0`
+configuration. Package `0.1.0` remains deterministic-only and blocks all ambiguity.
 :::
 
 ## Install from npm
@@ -25,7 +25,7 @@ Choose the host that should load the gate. Each host keeps its own installation 
     ```json
     {
       "$schema": "https://opencode.ai/config.json",
-      "plugin": ["auto-mode-gate@0.4.0"]
+      "plugin": ["auto-mode-gate@0.4.1"]
     }
     ```
 
@@ -35,7 +35,7 @@ Choose the host that should load the gate. Each host keeps its own installation 
     You can also install it for the current project:
 
     ```text
-    opencode plugin auto-mode-gate@0.4.0
+    opencode plugin auto-mode-gate@0.4.1
     ```
 
     Add `--global` to install it for every project. Verify the resolved plugin list:
@@ -47,13 +47,13 @@ Choose the host that should load the gate. Each host keeps its own installation 
     The resolved `plugin` list must contain the Auto Mode Gate entry.
   </TabItem>
   <TabItem label="Pi" icon="puzzle">
-    Version 0.4.0 requires Pi 0.84.2 for persistent judge controls and explicit secondary-model
-    thinking.
+    Version 0.4.1 requires Pi 0.84.2 for persistent judge controls and explicit secondary-model
+    thinking, as first documented for 0.4.0.
 
     Install globally:
 
     ```text
-    pi install npm:auto-mode-gate@0.4.0
+    pi install npm:auto-mode-gate@0.4.1
     ```
 
     Add `-l` for a project-local installation. Verify the package entry:
