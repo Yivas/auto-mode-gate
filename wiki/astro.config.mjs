@@ -34,6 +34,7 @@ export default defineConfig({
           collapsed: true,
           items: [
             { slug: 'guide/verify-and-operate', label: 'Verify and operate' },
+            { slug: 'guide/pi-controls', label: 'Use Pi judge controls' },
             { slug: 'guide/decisions', label: 'Understand decisions' },
             { slug: 'guide/modes-and-logs', label: 'Modes and sanitized logs' },
             { slug: 'guide/coverage-and-boundaries', label: 'Coverage and boundaries' },

@@ -23,19 +23,19 @@ After installing the package, inspect the installed package list:
 pi list
 ```
 
-Pi 0.84.1 lists installed packages in `pi list`; it does not list auto-discovered extension files there. A source installation can be checked without contacting model providers:
+Pi lists installed packages in `pi list`; it does not list auto-discovered extension files there. A source installation can be checked without contacting model providers:
 
 ```text
 pi --offline --list-models
 ```
 
-Since version `0.2.0`, verify session state from Pi with:
+Version 0.4.0 requires Pi 0.84.2 for persistent controls. Verify requested and effective state with:
 
 ```text
 /amg-judge status
 ```
 
-Use `/amg-judge on` only after global authorization names an available model. Use `/amg-judge off` to disable the current session, `/amg-judge model <provider> <model-id>` to select another available model, and `/amg-judge reset` to restore the global default. These commands do not edit files or change Pi's primary model.
+Run `/amg-judge` without arguments in TUI mode to open the control menu. Direct `on`, `off`, `model`, `thinking`, and `reset` commands save the global preference snapshot before changing the current session. They never change Pi's primary model or thinking. Read [Use Pi judge controls](../pi-controls/) for the full command, shortcut, persistence, and failure behavior.
 
 ## What is enforced
 
@@ -59,10 +59,11 @@ Run the project test suite from the repository root:
 npm test
 ```
 
-The published package documents only the validated OpenCode, Pi, and Node baselines. Version 0.3.0 retains the Pi judge introduced in 0.2.0, but no real-model inference was used for its validation. Do not infer broader compatibility or provider safety from a successful local or loopback run.
+The published package documents only the validated OpenCode, Pi, and Node baselines. Version 0.4.0 adds persistent controls and explicit secondary-model thinking on Pi 0.84.2, but no real-model inference was used for validation. Do not infer broader compatibility or provider safety from a successful local or loopback run.
 
 ## Next steps
 
+- [Use Pi judge controls](../pi-controls/).
 - [Review the decision rules](../decisions/).
 - [Understand modes and logs](../modes-and-logs/).
 - [Read coverage boundaries](../coverage-and-boundaries/).

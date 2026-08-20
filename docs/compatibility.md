@@ -1,29 +1,35 @@
 # Compatibility Baseline
 
-Auto Mode Gate 0.3.0 adds host-owned configuration and migration from the shared `0.2.0` paths.
-It preserves the Pi judge introduced in 0.2.0 and the deterministic 0.1.0 policy. The versions below
-are validated host-contract baselines, not broad compatibility claims.
+Auto Mode Gate 0.4.0 adds persistent global Pi controls for Auto, judge model, thinking, and
+shortcuts. It preserves the Pi judge introduced in 0.2.0, the host-owned configuration and migration
+introduced in 0.3.0, and the deterministic 0.1.0 policy. The versions below are validated
+host-contract baselines, not broad compatibility claims.
 
-| Host | Executed baseline | Pre-execution hook | `0.1.0` | `0.2.0+` |
-|-|-|-|-|-|
-| OpenCode | `v1.18.18`, `31406ccc51b4bd2a4e1e086b2bcaa5f7f804f26d` | `tool.execute.before` blocked before a stub effect | All ambiguity blocks | Eligible cases block as judge unavailable |
-| Pi | `v0.84.1`, `53fa77ccd8a279eb87e92294ef3687b03ff80112` | `tool_call` blocked before a stub effect | All ambiguity blocks | Authorized active sessions can use one isolated judge call |
+| Host | Executed baseline | Pre-execution hook | `0.1.0` | `0.2.0`–`0.3.0` | `0.4.0` |
+|-|-|-|-|-|-|
+| OpenCode | `v1.18.18`, `31406ccc51b4bd2a4e1e086b2bcaa5f7f804f26d` | `tool.execute.before` blocked before a stub effect | All ambiguity blocks | Eligible cases block as judge unavailable | Same fail-closed unavailable behavior |
+| Pi | `v0.84.1`, `53fa77ccd8a279eb87e92294ef3687b03ff80112`; controls probed on `v0.84.2` | `tool_call` blocked before a stub effect | All ambiguity blocks | Authorized active sessions can use one isolated judge call | Pi 0.84.2 adds persisted controls and explicit secondary-model thinking |
 
 Pi `v0.84.2` at commit `914cf1472e715297caa30db4b9535d534a9eb718` was installed only in a
 temporary directory and exercised against loopback OpenAI-compatible servers. The published
 `0.2.0` transport probe covered async pre-tool waiting, model selection, zero tools, no reentry,
-timeout, cancellation, errors, invalid output, missing models, and session reset. The AMG9 probe for
-current source also covered the public provider and model-auth facades, explicit thinking, model
+timeout, cancellation, errors, invalid output, missing models, and session reset. The 0.4.0 probe also covered the public provider and model-auth facades, explicit thinking, model
 headers, one request, `maxRetries: 0`, unchanged primary model/thinking, global preference restore,
 direct RPC commands, reset, shortcuts, and status. No real inference, active profile, or real
 credential was used.
 
-Current source requires Pi `v0.84.2` for persisted judge controls and explicit secondary-model
+Version 0.4.0 requires Pi `v0.84.2` for persisted judge controls and explicit secondary-model
 thinking. `inherit` keeps the previous `ModelRegistry.complete()` path. Explicit thinking uses the
 public provider `streamSimple()` contract and exact model auth from `getApiKeyAndHeaders()`. The
-selector reads `reasoning` and `thinkingLevelMap`; `xhigh` and `max` appear only when the model maps
-them, and any `null` mapping removes that level. The extension rejects unsupported levels instead
-of clamping them.
+selector reads `reasoning` and `thinkingLevelMap`. A model without reasoning exposes only
+`inherit` and `off`. For reasoning models, `xhigh` and `max` appear only when the model maps them,
+and a `null` mapping removes that level. The extension rejects unsupported levels instead of
+clamping them.
+
+The exported `PermissionJudgeSessionStatus` interface retains its 0.3.0 fields and adds required
+requested/effective authorization, model, and thinking fields. TypeScript consumers that construct
+status literals must supply the expanded shape when updating to 0.4.0. Consumers that only read
+status values can continue using the existing fields.
 
 ## Sources
 
@@ -93,7 +99,7 @@ an eligible case.
   process must load the plugin itself.
 - OpenCode's researched pre-tool hook does not include agent identity or an abort signal.
 - Pi 0.84.2 exposes the model registry, provider, model-auth, simple-stream, UI, status, and shortcut
-  contracts used by current source; no equivalent isolated API was verified in OpenCode 1.18.18.
+  contracts used by version 0.4.0; no equivalent isolated API was verified in OpenCode 1.18.18.
 - `scopedModels: []` means Pi did not restrict the model catalog. A missing `scopedModels` value is
   treated as missing host evidence and disables effective Auto without erasing the requested state.
 - Shortcut changes require `/reload` or restart. Pi rejects reserved bindings and warns when another

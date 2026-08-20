@@ -66,6 +66,12 @@ A project can tighten `shadow` to `enforce`, remove trusted paths, disable the j
 
 Each configuration file may contain at most 64 KiB, and each trusted-path list may contain at most 256 entries. Unknown keys, invalid JSON, relative file paths, oversized input, and unreadable files fail closed.
 
+## Pi judge preferences
+
+Version 0.4.0 stores Pi user choices separately from policy in `$PI_CODING_AGENT_DIR/auto-mode-gate-preferences.json`, with `~/.pi/agent/auto-mode-gate-preferences.json` as the fallback. The file persists requested Auto, an optional judge-model override, an optional thinking override, and shortcuts.
+
+Preferences do not authorize the judge and have no project variant. Global `permissionJudge.enabled: true` and its model remain the authority; project policy can still disable the capability. Use the [Pi judge controls](../../guide/pi-controls/) instead of editing the preference file by hand when Pi TUI or direct commands are available.
+
 ## Modes
 
 - `enforce`: denied actions block.
@@ -77,5 +83,6 @@ Each configuration file may contain at most 64 KiB, and each trusted-path list m
 ## Next steps
 
 - [Migrate configuration](../migrate/).
+- [Use the Pi judge controls](../../guide/pi-controls/).
 - [Understand the decision rules](../../guide/decisions/).
 - [Check the validated host baselines](../../reference/validated-baselines/).

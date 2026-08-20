@@ -28,12 +28,13 @@ The project does not provide an operating-system sandbox, a remote policy servic
 
 ## Permission judge status
 
-Version 0.2.0 supports an opt-in Pi judge through the host's model registry; version 0.1.0 remains deterministic-only. Each Pi session starts off and can use `/amg-judge` to inspect status, toggle the judge, select an available model, or reset to the global default.
+Version 0.4.0 supports persistent global Pi preferences for Auto, judge model, thinking, and shortcuts; version 0.1.0 remains deterministic-only. A new Pi session restores the requested global preference. Policy authorization, project disable, model scope, model availability, and thinking support still decide whether Auto is effective.
 
 Only closed sanitized Git candidates are eligible. Deterministic decisions, ineligible input, `off`, and `shadow` use zero model calls. Pi failures block before the Bash effect. OpenCode has no equivalent verified transport and blocks eligible cases as unavailable.
 
 ## Next steps
 
+- [Use Pi judge controls](../pi-controls/).
 - [Check the validated baselines](../../reference/validated-baselines/).
 - [Understand decisions](../decisions/).
 - [Read the technical compatibility record](https://github.com/Yivas/auto-mode-gate/blob/main/docs/compatibility.md).

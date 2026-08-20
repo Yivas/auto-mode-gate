@@ -17,7 +17,7 @@ body:
     attributes:
       label: Auto Mode Gate version
       description: Use the installed package or checkout version.
-      placeholder: 0.1.0
+      placeholder: 0.4.0
     validations:
       required: true
   - type: dropdown
@@ -34,7 +34,7 @@ body:
     attributes:
       label: Host version
       description: Report the exact OpenCode or Pi version.
-      placeholder: OpenCode 1.18.18 or Pi 0.84.1
+      placeholder: OpenCode 1.18.18 or Pi 0.84.2
     validations:
       required: true
   - type: input

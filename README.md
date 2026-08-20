@@ -1,25 +1,23 @@
 # Auto Mode Gate
 
 Auto Mode Gate is a host-neutral permission gate for OpenCode and Pi. It applies deterministic
-policy before Bash tool calls execute. Version 0.3.0 keeps global and project policy under each
-host, with migration from the shared `0.2.0` paths. Current source adds global Pi preferences for
-Auto, the judge model, and thinking without changing the primary conversation model. Version 0.1.0
-remains the deterministic-only release.
+policy before Bash tool calls execute. Version 0.4.0 adds persistent global Pi controls for Auto,
+the judge model, and thinking without changing the primary conversation model. It retains the
+host-owned policy paths and safe migration introduced in 0.3.0. Version 0.1.0 remains the
+deterministic-only release.
 
 ## Status
 
 The core, OpenCode plugin, Pi extension, file-based configuration, sanitized JSONL logs, and
-installation flows are implemented and tested. Version 0.3.0 separates policy by host and migrates
-valid shared configuration without overwriting or deleting it. The unreleased Pi controls persist
-preferences in the Pi configuration root and restore them for new sessions. Version 0.3.0 is
-published on [npm](https://www.npmjs.com/package/auto-mode-gate) and
-[GitHub](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.3.0). Read the
-[public documentation](https://yivas.github.io/auto-mode-gate/) for the guided installation and
-configuration reference. It supports only the validated baselines:
+installation flows are implemented and tested. Version 0.4.0 persists Pi judge preferences in the
+Pi configuration root and restores them for new sessions while preserving project restrictions.
+Version 0.4.0 is published on [npm](https://www.npmjs.com/package/auto-mode-gate) and
+[GitHub](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.4.0). Read the
+[public documentation](https://yivas.github.io/auto-mode-gate/) for guided installation,
+configuration, migration, and Pi controls. It supports only the validated baselines:
 
 - OpenCode 1.18.18;
-- Pi 0.84.1 for the published deterministic adapter;
-- Pi 0.84.2 for the researched and isolated judge transport;
+- Pi 0.84.2 for the persistent controls and isolated judge transport;
 - Node 24.9.0 for the test suite.
 
 ## Decision flow
@@ -60,7 +58,7 @@ The recommended setup is to declare the package in the `plugin` array of your pr
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["auto-mode-gate@0.3.0"]
+  "plugin": ["auto-mode-gate@0.4.0"]
 }
 ```
 
@@ -70,7 +68,7 @@ OpenCode resolves configured npm plugins when it starts.
 Alternatively, install it for the current project:
 
 ```text
-opencode plugin auto-mode-gate@0.3.0
+opencode plugin auto-mode-gate@0.4.0
 ```
 
 Add `--global` to install it for every project.
@@ -86,7 +84,7 @@ opencode debug config
 Install globally:
 
 ```text
-pi install npm:auto-mode-gate@0.3.0
+pi install npm:auto-mode-gate@0.4.0
 ```
 
 Add `-l` for a project-local installation. Verify the package entry:
@@ -169,13 +167,14 @@ if ($scope -eq "project") {
 }
 ```
 
-Pi 0.84.1 does not list auto-discovered extension files in `pi list`; that command lists installed
-packages from settings.
+The isolated source-loader check used Pi 0.84.1. That version does not list auto-discovered
+extension files in `pi list`; the command lists installed packages from settings. Version 0.4.0
+requires Pi 0.84.2 for persistent judge controls.
 
 ## Configure
 
-Version `0.3.0` keeps policy under the host that loads it. Auto Mode Gate reads configuration when
-an adapter starts; restart or reload that host after a change.
+Version `0.3.0` and later keep policy under the host that loads it. Auto Mode Gate reads
+configuration when an adapter starts; restart or reload that host after a change.
 
 | Scope | OpenCode | Pi |
 |-|-|-|
@@ -253,7 +252,7 @@ Modes behave as follows:
 
 `shadow` is an observation mode, not a security control.
 
-### Pi judge preferences in current source
+### Pi judge preferences
 
 Pi stores user choices in `$PI_CODING_AGENT_DIR/auto-mode-gate-preferences.json` or
 `~/.pi/agent/auto-mode-gate-preferences.json`. This file does not authorize the judge and has no
@@ -301,7 +300,7 @@ blocks with `AMG_DENY_INTERNAL_ERROR`. Logging is disabled when `logPath` is abs
 ## Operation
 
 OpenCode and Pi activate independently through their package entries or source loader files.
-Removing one installation leaves the other host unchanged. In current source, `/amg-judge` opens
+Removing one installation leaves the other host unchanged. In version 0.4.0, `/amg-judge` opens
 the Pi control menu in TUI mode. Direct commands remain available:
 
 ```text

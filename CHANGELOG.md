@@ -2,10 +2,13 @@
 
 ## Unreleased
 
+## 0.4.0 - 2026-08-20
+
 - Add global Pi preferences for Auto, judge model, thinking, and shortcuts without changing judge authorization.
 - Add a Pi control menu, direct thinking command, quick Auto toggle, and compact status indicator.
 - Restore preferences in new sessions while keeping project restrictions, model scope, and model availability fail-closed.
 - Apply verified secondary-model thinking through Pi 0.84.2 with one isolated request, zero tools, no history, no retries, cancellation, and a local deadline.
+- Expand the exported Pi session status with requested and effective authorization, model, and thinking fields.
 
 ## 0.3.0 - 2026-08-20
 

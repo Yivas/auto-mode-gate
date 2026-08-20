@@ -13,7 +13,7 @@ hero:
       variant: secondary
 ---
 
-Auto Mode Gate applies one host-neutral policy before a built-in Bash tool call executes. Version 0.3.0 stores policy under each host and migrates shared `0.2.0` files without overwriting them. Version 0.2.0 added an opt-in Pi judge for a narrow eligible Git request after deterministic analysis. Version 0.1.0 remains deterministic-only.
+Auto Mode Gate applies one host-neutral policy before a built-in Bash tool call executes. Version 0.4.0 adds persistent Pi controls for Auto, judge model, thinking, and shortcuts. It retains the host-owned policy paths and safe migration introduced in 0.3.0. Version 0.1.0 remains deterministic-only.
 
 :::caution[Not an operating-system sandbox]
 Auto Mode Gate does not replace native OpenCode or Pi permissions. A separately launched child host must load its own adapter, and coverage is limited to the documented hook paths.
@@ -33,15 +33,18 @@ Auto Mode Gate does not replace native OpenCode or Pi permissions. A separately 
 | `unresolved-ineligible` | Block without a model call. |
 | `unresolved-eligible` | Pi may ask once; OpenCode blocks as unavailable. |
 
-## Pi judge in version 0.2.0
+## Pi judge controls in version 0.4.0
 
 Pi sends only closed enums for a configured Git `diff`, `log`, `show`, or `status` candidate. It sends no command text, values, paths, URLs, secrets, history, host context, or IDs. Deterministic decisions, `off`, and `shadow` make zero model calls. Cancellation, deadline, malformed output, tool calls, errors, and unavailable models block. After an enforced allowance, the adapter freezes the reviewed argument object before another pre-tool handler can change it.
+
+Version 0.4.0 restores global Auto, model, thinking, and shortcut preferences in new Pi sessions. Requested and effective state remain separate, so missing authorization, project disable, model scope, or unsupported thinking turns effective Auto off without erasing the user's request. [Use the Pi judge controls](./guide/pi-controls/) to configure the menu, direct commands, and shortcuts.
 
 ## Choose a path
 
 - [Install the package](./getting-started/install/) for OpenCode or Pi.
 - [Configure the gate](./getting-started/configure/) with host-owned global and project policy.
 - [Migrate shared 0.2.0 configuration](./getting-started/migrate/) without overwriting either host.
+- [Use Pi judge controls](./guide/pi-controls/) for persistent Auto, model, thinking, and shortcuts.
 - [Understand the decision rules](./guide/decisions/) before trusting a path.
 - [Check validated baselines](./reference/validated-baselines/) before claiming compatibility.
 

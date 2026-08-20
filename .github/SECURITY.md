@@ -7,9 +7,9 @@ both runtime adapters at their validated host baselines.
 
 | Component | Supported baseline |
 |-|-|
-| Auto Mode Gate | 0.1.x |
+| Auto Mode Gate | 0.4.x |
 | OpenCode adapter | OpenCode 1.18.18 |
-| Pi adapter | Pi 0.84.1 |
+| Pi adapter | Pi 0.84.2 |
 
 Review the [compatibility baseline](../docs/compatibility.md) before reporting behavior outside the
 supported hook paths or host versions. Auto Mode Gate is a pre-tool policy gate, not an

@@ -6,7 +6,7 @@ description: Install the OpenCode plugin or Pi extension from the published npm 
 Install the package only after reviewing its source. OpenCode plugins and Pi extensions run with the user's system permissions.
 
 :::note[Choose the required behavior]
-Package `0.3.0` uses host-owned policy paths and can [migrate shared `0.2.0` configuration](../migrate/) without overwriting it. Package `0.2.0` includes the opt-in Pi judge with shared policy paths. Package `0.1.0` remains deterministic-only and blocks all ambiguity.
+Package `0.4.0` adds persistent Pi controls and retains the host-owned policy paths from 0.3.0. It can [migrate shared `0.2.0` configuration](../migrate/) without overwriting it. Package `0.1.0` remains deterministic-only and blocks all ambiguity.
 :::
 
 ## Install from npm
@@ -18,7 +18,7 @@ The recommended setup is to declare the package in the `plugin` array of your pr
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["auto-mode-gate@0.3.0"]
+  "plugin": ["auto-mode-gate@0.4.0"]
 }
 ```
 
@@ -27,7 +27,7 @@ Merge that entry into an existing `plugin` array without removing other plugins 
 Alternatively, install it for the current project:
 
 ```text
-opencode plugin auto-mode-gate@0.3.0
+opencode plugin auto-mode-gate@0.4.0
 ```
 
 Add `--global` to install it for every project.
@@ -42,10 +42,12 @@ The resolved `plugin` list must contain the Auto Mode Gate entry.
 
 ### Pi
 
+Version 0.4.0 requires Pi 0.84.2 for persistent judge controls and explicit secondary-model thinking.
+
 Install globally:
 
 ```text
-pi install npm:auto-mode-gate@0.3.0
+pi install npm:auto-mode-gate@0.4.0
 ```
 
 Add `-l` for a project-local installation. Verify the package entry:
@@ -139,3 +141,4 @@ Remove-Item -Recurse <extension-root>\auto-mode-gate
 - [Configure the gate](../configure/).
 - [Migrate configuration from 0.2.0](../migrate/).
 - [Verify and operate it](../../guide/verify-and-operate/).
+- [Use the Pi judge controls](../../guide/pi-controls/).

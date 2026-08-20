@@ -1,0 +1,119 @@
+---
+title: Use Pi judge controls
+description: Persist Auto, judge model, thinking, and shortcuts without changing Pi's primary model.
+---
+
+Version 0.4.0 adds global controls for the Pi permission judge. These controls require Pi 0.84.2. They select the secondary model used for eligible permission decisions and never change Pi's primary conversation model or thinking level.
+
+:::caution[Preferences do not grant permission]
+The global policy file must still authorize the judge. A project can disable it. Persisted preferences cannot enable a judge that policy does not authorize or relax a project restriction.
+:::
+
+## Open the control menu
+
+Run this command in Pi TUI mode:
+
+```text
+/amg-judge
+```
+
+The menu shows Auto, the selected judge model, effective thinking, and reset. Model search matches provider, model ID, and display name. The thinking selector lists only levels supported by the selected model.
+
+RPC, print, and JSON modes do not open or wait for the TUI menu. Use direct commands in RPC automation.
+
+## Use direct commands
+
+```text
+/amg-judge status
+/amg-judge on
+/amg-judge off
+/amg-judge model <provider> <model-id>
+/amg-judge thinking <level>
+/amg-judge reset
+```
+
+| Command | Result |
+|-|-|
+| `status` | Reports enabled/off plus model and requested thinking when available; otherwise it reports the blocking policy or availability reason. |
+| `on` | Requests Auto for this and future sessions after the preference file is saved. |
+| `off` | Disables requested Auto after the preference file is saved. |
+| `model` | Selects an available model inside Pi's current model scope. |
+| `thinking` | Selects `inherit`, `off`, or a level supported by the selected model. |
+| `reset` | Removes model and thinking overrides while preserving Auto and shortcut choices. |
+
+A command reports success only after the complete preference snapshot is written. A failed save leaves the current session unchanged.
+
+## Understand requested and effective state
+
+Auto can remain requested while its effective state is off. This happens when:
+
+- global policy does not authorize the judge;
+- project policy disables the judge;
+- Pi does not provide model-scope evidence;
+- the selected model is unavailable or outside the current scope;
+- the selected thinking level is unsupported.
+
+Fix the blocking condition and check status again. Reload or restart Pi when host scope or extension configuration changes. Auto Mode Gate does not erase the requested preference when a project or model restriction disables it.
+
+## Choose thinking
+
+The preference schema accepts `inherit`, `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, and `max`. A model can support fewer levels.
+
+- `inherit` uses Pi's verified model-registry completion path without a thinking override.
+- `off` explicitly disables secondary-model thinking when the model supports that setting.
+- Other levels use Pi 0.84.2's public provider transport and exact model authentication.
+
+Unsupported levels are rejected before transport. Auto Mode Gate does not clamp a requested level to another value. Each eligible decision still uses at most one isolated request with no tools, no history, no retries, host cancellation, and a local deadline.
+
+## Change shortcuts
+
+The defaults are:
+
+| Action | Shortcut |
+|-|-|
+| Open the control menu | `Ctrl+Alt+G` |
+| Toggle Auto | `Ctrl+Alt+A` |
+
+Change them in the global preference file and then run `/reload` or restart Pi. Pi rejects its reserved bindings and warns when another extension registers the same non-reserved combination.
+
+## Preference file
+
+Pi reads one global file:
+
+```text
+$PI_CODING_AGENT_DIR/auto-mode-gate-preferences.json
+```
+
+When `PI_CODING_AGENT_DIR` is not set, the fallback is:
+
+```text
+~/.pi/agent/auto-mode-gate-preferences.json
+```
+
+Example with fictional model values:
+
+```json
+{
+  "version": 1,
+  "autoEnabled": true,
+  "model": {
+    "provider": "example-provider",
+    "id": "example-model"
+  },
+  "thinking": "high",
+  "shortcuts": {
+    "menu": "ctrl+alt+g",
+    "toggleAuto": "ctrl+alt+a"
+  }
+}
+```
+
+`model` and `thinking` are optional. The file has no project variant and is not read from legacy policy paths. Invalid JSON, extra keys, oversized input, links, unreadable files, unavailable models, missing scope, and unsupported thinking load safe defaults or disable effective Auto without weakening policy.
+
+Preferences do not enter Pi session JSONL or Auto Mode Gate decision logs.
+
+## Next steps
+
+- [Configure global judge authorization](../../getting-started/configure/).
+- [Verify Pi and host scope](../verify-and-operate/).
+- [Read coverage boundaries](../coverage-and-boundaries/).

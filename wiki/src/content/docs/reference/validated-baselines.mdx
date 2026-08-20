@@ -11,16 +11,16 @@ The versions below are validated host-contract baselines, not broad compatibilit
 |-|-|-|
 | OpenCode | `v1.18.18` | `tool.execute.before` blocked before a stub effect. |
 | Pi deterministic adapter | `v0.84.1` | `tool_call` blocked before a stub effect. |
-| Pi judge transport | `v0.84.2`, commit `914cf1472e715297caa30db4b9535d534a9eb718` | Temporary loopback probe passed ten transport and session cases. |
-| Node.js test suite | `24.9.0` | Unit, runtime, integration, privacy, race, and conformance tests. |
+| Pi judge transport and controls | `v0.84.2`, commit `914cf1472e715297caa30db4b9535d534a9eb718` | Temporary loopback and host probes covered transport, thinking, preferences, commands, status, and reset. |
+| Node.js test suite | `24.9.0` | 246 unit, runtime, integration, privacy, race, and conformance tests passed for 0.4.0. |
 
-The Pi 0.84.2 probe used a temporary package, profile, and loopback OpenAI-compatible server. It did not use credentials, contact a real model, or modify the active Pi 0.84.1 installation.
+Version 0.4.0 requires Pi 0.84.2 for persistent controls and explicit secondary-model thinking. The Pi 0.84.2 probes used a temporary package, profile, and loopback OpenAI-compatible server. They did not use credentials, contact a real model, or modify the active Pi 0.84.1 installation.
 
 ## What the tests cover
 
 The source-level adapter suite replays shared deterministic and judge corpora. Host doubles cover pre-effect blocking, exact trusted paths, judge allow/deny/unavailable/error/invalid output, session isolation, zero-tool requests, no recursion, model absence, cancellation, monotonic deadlines, synchronous provider blocking, late completion, `shadow`, `off`, and OpenCode degradation.
 
-Runtime tests separately exercise host-owned configuration precedence, isolation, sanitized logs, malformed configuration, log-write failure, both host entry points, byte-preserving migration, destination precedence, symlink rejection, and non-directory failures. Isolated profile checks recorded in the compatibility evidence cover source loading and removal.
+Runtime tests separately exercise host-owned configuration precedence, isolation, sanitized logs, malformed configuration, log-write failure, both host entry points, byte-preserving migration, destination precedence, symlink rejection, and non-directory failures. Pi tests also cover atomic preference replacement, concurrent writers, requested/effective state, model scope, thinking support, menu behavior, shortcuts, RPC, and TUI-only dialog gating. Isolated profile checks recorded in the compatibility evidence cover source loading and removal.
 
 ## Before claiming support
 
@@ -42,3 +42,4 @@ Source-profile and loopback results alone do not authorize a package release, re
 
 - [Install the validated package](../../getting-started/install/).
 - [Verify and operate the gate](../../guide/verify-and-operate/).
+- [Use Pi judge controls](../../guide/pi-controls/).

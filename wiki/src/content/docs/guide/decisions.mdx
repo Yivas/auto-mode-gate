@@ -3,7 +3,7 @@ title: Understand decisions
 description: Learn how deterministic rules classify safe, dangerous, and ambiguous Bash calls.
 ---
 
-Auto Mode Gate applies deterministic rules before the permission judge. Version 0.2.0 sends only an eligible sanitized Git request to a user-selected Pi model; version 0.1.0 does not invoke a judge.
+Auto Mode Gate applies deterministic rules before the permission judge. Version 0.4.0 restores the selected Pi judge model and thinking from global preferences; version 0.1.0 does not invoke a judge.
 
 ## Decision flow
 
@@ -52,10 +52,11 @@ Every result other than `allow` has a stable denial code. Ineligible ambiguity u
 
 Deterministic allowances and denials skip the model, which reduces calls and prevents the judge from weakening fixed policy. Eligibility requires a configured exact Git path, simple literal syntax, and a closed `diff`, `log`, `show`, or `status` request. The model receives only shell, operation, option-risk, and argument-kind enums. It receives no command text, values, paths, URLs, secrets, history, objectives, host context, or IDs.
 
-Pi uses one isolated model-registry call with `tools: []`, no history, `maxRetries: 0`, cancellation, and a local deadline that does not wait for late providers. Only one canonical JSON allow or deny response is accepted. OpenCode has no verified transport and blocks eligible cases as unavailable.
+Pi uses one isolated request with `tools: []`, no history, `maxRetries: 0`, cancellation, and a local deadline that does not wait for late providers. `inherit` uses the verified model-registry path; an explicit thinking level uses Pi 0.84.2's public provider transport and exact model authentication. Only one canonical JSON allow or deny response is accepted. OpenCode has no verified transport and blocks eligible cases as unavailable.
 
 ## Next steps
 
 - [Configure trusted paths](../../getting-started/configure/).
+- [Use Pi judge controls](../pi-controls/).
 - [Review modes and sanitized logs](../modes-and-logs/).
 - [Read the technical architecture](https://github.com/Yivas/auto-mode-gate/blob/main/docs/architecture.md).

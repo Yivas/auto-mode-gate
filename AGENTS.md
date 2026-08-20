@@ -9,7 +9,8 @@ and commits must be written in English.
 The repository contains the host-neutral permission core, OpenCode and Pi runtime adapters, strict
 file-based configuration, npm and source-install documentation, and tests. Version 0.1.0 was the
 first public release; version 0.2.0 added the opt-in Pi permission judge; version 0.3.0 adds
-host-owned configuration paths and migration from the shared `0.2.0` files.
+host-owned configuration paths and migration from the shared `0.2.0` files; version 0.4.0 adds
+persistent global Pi judge controls for Auto, model, thinking, and shortcuts.
 
 The product uses the shared core through separate OpenCode and Pi adapters. It must not contain
 multi-agent orchestration, private planning, local profiles, operational prompts, objectives,
