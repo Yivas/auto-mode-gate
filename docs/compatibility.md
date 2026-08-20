@@ -1,9 +1,10 @@
 # Compatibility Baseline
 
-Auto Mode Gate 0.2.0 adds the Pi permission judge while preserving the deterministic 0.1.0 policy.
-The versions below are validated host-contract baselines, not broad compatibility claims.
+Auto Mode Gate 0.3.0 adds host-owned configuration and migration from the shared `0.2.0` paths.
+It preserves the Pi judge introduced in 0.2.0 and the deterministic 0.1.0 policy. The versions below
+are validated host-contract baselines, not broad compatibility claims.
 
-| Host | Executed baseline | Pre-execution hook | `0.1.0` | `0.2.0` |
+| Host | Executed baseline | Pre-execution hook | `0.1.0` | `0.2.0+` |
 |-|-|-|-|-|
 | OpenCode | `v1.18.18`, `31406ccc51b4bd2a4e1e086b2bcaa5f7f804f26d` | `tool.execute.before` blocked before a stub effect | All ambiguity blocks | Eligible cases block as judge unavailable |
 | Pi | `v0.84.1`, `53fa77ccd8a279eb87e92294ef3687b03ff80112` | `tool_call` blocked before a stub effect | All ambiguity blocks | Authorized active sessions can use one isolated judge call |

@@ -1,17 +1,17 @@
 # Auto Mode Gate
 
 Auto Mode Gate is a host-neutral permission gate for OpenCode and Pi. It applies deterministic
-policy before Bash tool calls execute. Version 0.2.0 adds an opt-in Pi judge after deterministic
-analysis and sends only a closed sanitized request for an eligible unresolved Git action. Version
-0.1.0 remains the deterministic-only release.
+policy before Bash tool calls execute. Version 0.3.0 keeps global and project policy under each
+host, with migration from the shared `0.2.0` paths. Version 0.2.0 added an opt-in Pi judge for a
+closed sanitized Git request. Version 0.1.0 remains the deterministic-only release.
 
 ## Status
 
 The core, OpenCode plugin, Pi extension, file-based configuration, sanitized JSONL logs, and
-installation flows are implemented and tested. Version 0.2.0 includes session-scoped Pi judge
-controls and transport. It is published on
-[npm](https://www.npmjs.com/package/auto-mode-gate) and
-[GitHub](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.2.0). Read the
+installation flows are implemented and tested. Version 0.3.0 separates policy by host, migrates
+valid shared configuration without overwriting or deleting it, and retains the session-scoped Pi
+judge. It is published on [npm](https://www.npmjs.com/package/auto-mode-gate) and
+[GitHub](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.3.0). Read the
 [public documentation](https://yivas.github.io/auto-mode-gate/) for the guided installation and
 configuration reference. It supports only the validated baselines:
 
@@ -58,7 +58,7 @@ The recommended setup is to declare the package in the `plugin` array of your pr
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["auto-mode-gate@0.2.0"]
+  "plugin": ["auto-mode-gate@0.3.0"]
 }
 ```
 
@@ -68,7 +68,7 @@ OpenCode resolves configured npm plugins when it starts.
 Alternatively, install it for the current project:
 
 ```text
-opencode plugin auto-mode-gate@0.2.0
+opencode plugin auto-mode-gate@0.3.0
 ```
 
 Add `--global` to install it for every project.
@@ -84,7 +84,7 @@ opencode debug config
 Install globally:
 
 ```text
-pi install npm:auto-mode-gate@0.2.0
+pi install npm:auto-mode-gate@0.3.0
 ```
 
 Add `-l` for a project-local installation. Verify the package entry:
@@ -172,9 +172,8 @@ packages from settings.
 
 ## Configure
 
-The host-owned paths and migration below describe unreleased builds from `main`. The published npm
-package `0.2.0` still reads the shared legacy paths listed under migration. Auto Mode Gate reads
-configuration when an adapter starts; restart or reload that host after a change.
+Version `0.3.0` keeps policy under the host that loads it. Auto Mode Gate reads configuration when
+an adapter starts; restart or reload that host after a change.
 
 | Scope | OpenCode | Pi |
 |-|-|-|

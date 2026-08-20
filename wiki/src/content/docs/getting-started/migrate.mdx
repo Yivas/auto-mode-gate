@@ -3,11 +3,7 @@ title: Migrate configuration
 description: Move shared 0.2.0 policy into host-owned OpenCode and Pi paths without overwriting files.
 ---
 
-:::note[Unreleased migration]
-This page documents builds from `main` after `0.2.0`. The published npm package `0.2.0` still reads the shared legacy paths below.
-:::
-
-Newer builds keep policy under the host that executes the hook. OpenCode and Pi can use different global and project policy without reading each other's destination.
+Version `0.3.0` keeps policy under the host that executes the hook. OpenCode and Pi can use different global and project policy without reading each other's destination. Version `0.2.0` reads the shared legacy paths below.
 
 ## Legacy and destination paths
 

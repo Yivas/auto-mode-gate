@@ -1,10 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 - 2026-08-20
 
 - Move global and project policy files under the OpenCode or Pi configuration root.
 - Migrate valid legacy configuration by an exclusive byte-for-byte copy without overwriting a host-owned destination or deleting the source.
 - Fail closed for invalid files, relative host roots, symlinks, non-regular entries, and migration errors.
+- Document automatic and manual migration, verification, cleanup, rollback, remigration, and filesystems without hard-link support.
 
 ## 0.2.0 - 2026-08-17
 
