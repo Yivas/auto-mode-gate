@@ -3,7 +3,11 @@ title: Migrate configuration
 description: Move shared 0.2.0 policy into host-owned OpenCode and Pi paths without overwriting files.
 ---
 
-Newer builds keep policy under the host that executes the hook. OpenCode and Pi can now use different global and project policy without reading each other's destination.
+:::note[Unreleased migration]
+This page documents builds from `main` after `0.2.0`. The published npm package `0.2.0` still reads the shared legacy paths below.
+:::
+
+Newer builds keep policy under the host that executes the hook. OpenCode and Pi can use different global and project policy without reading each other's destination.
 
 ## Legacy and destination paths
 
@@ -23,7 +27,7 @@ When a host-owned destination is absent, the adapter:
 5. publishes it without replacing a destination created by another process;
 6. leaves the legacy source unchanged.
 
-An existing destination is authoritative. The adapter ignores legacy even when legacy has newer or different content. Invalid destinations fail closed instead of falling back.
+An existing destination is authoritative. The adapter ignores legacy even when legacy has newer or different content. Invalid destinations fail closed instead of falling back. Automatic publication requires same-filesystem hard-link support. If the filesystem rejects it, the host fails closed and you must migrate manually.
 
 :::caution[No automatic cleanup]
 Keep legacy until both hosts have migrated and you have verified each destination. Automatic migration never deletes, truncates, renames, or reserializes it.
@@ -34,7 +38,7 @@ Keep legacy until both hosts have migrated and you have verified each destinatio
 1. Stop or reload the target host so it is not reading configuration during the copy.
 2. Confirm the destination does not exist. Do not overwrite it.
 3. Create the host-owned parent directory if needed.
-4. Copy the legacy file to the destination for that host.
+4. Copy the legacy file with a create-only or no-clobber option that fails when the destination exists. Do not use a command that overwrites by default.
 5. Start the host and verify behavior.
 6. Repeat for the other host if you use both.
 

@@ -172,8 +172,9 @@ packages from settings.
 
 ## Configure
 
-Auto Mode Gate keeps policy under the host that loads it. It reads configuration when an adapter
-starts; restart or reload that host after a change.
+The host-owned paths and migration below describe unreleased builds from `main`. The published npm
+package `0.2.0` still reads the shared legacy paths listed under migration. Auto Mode Gate reads
+configuration when an adapter starts; restart or reload that host after a change.
 
 | Scope | OpenCode | Pi |
 |-|-|-|
