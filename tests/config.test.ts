@@ -8,6 +8,7 @@ import test from "node:test";
 import {
   createShellAdapter,
   getDefaultGlobalConfigPath,
+  getDefaultPiPreferencesPath,
   loadAdapterOptions,
 } from "../src/index.ts";
 import { getLegacyGlobalConfigPath } from "../src/config.ts";
@@ -260,28 +261,38 @@ test("permission judge authorization is global, strict, and project-monotonic", 
     fixture.projectConfigPath,
     JSON.stringify({ permissionJudge: { timeoutMs: 5_000 } }),
   );
-  assert.deepEqual(
-    loadAdapterOptions("pi", fixture.projectDirectory, {
-      globalConfigPath: fixture.globalConfigPath,
-      projectConfigPath: fixture.projectConfigPath,
-    }).permissionJudge,
-    {
+  const tightened = loadAdapterOptions("pi", fixture.projectDirectory, {
+    globalConfigPath: fixture.globalConfigPath,
+    projectConfigPath: fixture.projectConfigPath,
+  });
+  assert.deepEqual(tightened.permissionJudge, {
+    authorized: true,
+    defaultModel: { provider: "fictional-provider", id: "fictional-model-v1" },
+    timeoutMs: 5_000,
+  });
+  assert.deepEqual(tightened.permissionJudgeSessionPolicy, {
+    globalAuthorization: {
       authorized: true,
       defaultModel: { provider: "fictional-provider", id: "fictional-model-v1" },
-      timeoutMs: 5_000,
+      timeoutMs: 15_000,
     },
-  );
+    projectDisabled: false,
+    effectiveTimeoutMs: 5_000,
+  });
 
   await writeFile(
     fixture.projectConfigPath,
     JSON.stringify({ permissionJudge: { enabled: false } }),
   );
-  assert.deepEqual(
-    loadAdapterOptions("pi", fixture.projectDirectory, {
-      globalConfigPath: fixture.globalConfigPath,
-      projectConfigPath: fixture.projectConfigPath,
-    }).permissionJudge,
-    { authorized: false },
+  const projectDisabled = loadAdapterOptions("pi", fixture.projectDirectory, {
+    globalConfigPath: fixture.globalConfigPath,
+    projectConfigPath: fixture.projectConfigPath,
+  });
+  assert.deepEqual(projectDisabled.permissionJudge, { authorized: false });
+  assert.equal(projectDisabled.permissionJudgeSessionPolicy.projectDisabled, true);
+  assert.equal(
+    projectDisabled.permissionJudgeSessionPolicy.globalAuthorization.authorized,
+    true,
   );
 
   for (const permissionJudge of [
@@ -547,6 +558,14 @@ test("the default global path follows host-owned roots", () => {
   assert.equal(
     getDefaultGlobalConfigPath("pi", { PI_CODING_AGENT_DIR: "" }, "win32", "C:\\Users\\Test"),
     win32.join("C:\\Users\\Test", ".pi", "agent", "auto-mode-gate.json"),
+  );
+  assert.equal(
+    getDefaultPiPreferencesPath({}, "linux", "/home/test"),
+    posix.join("/home/test", ".pi", "agent", "auto-mode-gate-preferences.json"),
+  );
+  assert.equal(
+    getDefaultPiPreferencesPath({}, "win32", "C:\\Users\\Test"),
+    win32.join("C:\\Users\\Test", ".pi", "agent", "auto-mode-gate-preferences.json"),
   );
   assert.throws(
     () => getDefaultGlobalConfigPath("opencode", { OPENCODE_CONFIG_DIR: "." }, "linux", "/home/test"),

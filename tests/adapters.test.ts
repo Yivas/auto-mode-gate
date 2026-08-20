@@ -416,8 +416,7 @@ function registerPiHandler(extension: ReturnType<typeof createPiExtension>) {
     | undefined;
   extension({
     on(event, registeredHandler) {
-      assert.equal(event, "tool_call");
-      handler = registeredHandler;
+      if (event === "tool_call") handler = registeredHandler as typeof handler;
     },
   });
   assert.ok(handler);

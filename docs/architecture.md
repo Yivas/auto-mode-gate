@@ -95,6 +95,13 @@ oversized files, and unknown keys fail closed. Missing global configuration defa
 without shell evidence or trusted paths. Runtime adapters load the files when they start, so changes
 require a host restart or reload.
 
+Pi also reads `auto-mode-gate-preferences.json` from its global configuration root. Preferences hold
+requested Auto state plus optional judge-model and thinking overrides and the two AMG shortcut
+bindings. They cannot authorize the judge and have no project or legacy path. Writes use a unique
+same-directory temporary file, complete write, file flush, close, temporary read-back verification,
+and atomic replacement. The session commits a transition only after that write succeeds. Concurrent writers
+use last-writer-wins and leave a complete validated snapshot.
+
 The optional global `permissionJudge` block authorizes the capability only when it contains
 `enabled: true`, a provider/model reference, and an integer timeout from 1,000 through 120,000 ms.
 Missing or malformed authorization disables the judge. Project configuration can set
@@ -119,13 +126,15 @@ discovery. Missing project context installs a fail-closed hook. Other tools rema
 OpenCode permissions.
 
 `src/pi.ts` implements Pi's async `tool_call` contract. It handles the built-in `bash` tool and
-awaits one isolated judge call before returning allow or `{ block: true, reason }`. The transport
-uses Pi's selected model registry, a new context with `tools: []`, no history, `maxRetries: 0`, host
-cancellation, and an independent local deadline. Tool-call output, oversized or malformed message
-shapes, parsing that crosses the deadline, late completion, invalid text, and provider failures
-block. An enforced allowance freezes Pi's mutable input object before later `tool_call` handlers run.
-`src/pi-runtime.ts` resolves configuration from the event context and keeps at most 32 project
-runtimes. Missing project context blocks.
+awaits one isolated judge call before returning allow or `{ block: true, reason }`. `inherit` keeps
+the verified model-registry completion path. Explicit thinking resolves the public provider and
+exact model auth, then calls `streamSimple()` without changing Pi's primary model or thinking. Both
+paths use a new context with `tools: []`, no history, `maxRetries: 0`, host cancellation, and an
+independent local deadline. Tool-call output, oversized or malformed message shapes, parsing that
+crosses the deadline, late completion, invalid text, and provider failures block. An enforced
+allowance freezes Pi's mutable input object before later `tool_call` handlers run.
+`src/pi-runtime.ts` resolves configuration from the event context, injects the global preference
+repository, and keeps at most 32 project runtimes. Missing project context blocks.
 
 The adapters retain source-level factories for tests and embedding. The runtime entries add strict
 file discovery without modifying host settings. OpenCode and Pi activate independently through the
@@ -150,9 +159,17 @@ A strict validator accepts only the two canonical protocol responses. Pi invokes
 when global configuration authorizes it and the current session is active. OpenCode has no verified
 transport and maps the same eligible case to `AMG_DENY_JUDGE_UNAVAILABLE`.
 
-Pi registers `/amg-judge` controls for session status, activation, model selection, and reset. State
-is keyed by Pi's session-manager object, starts disabled, and is never written to settings or session
-JSONL. Model selection uses `find()` and `getAvailable()` without changing the primary model.
+Pi registers `/amg-judge` controls for status, Auto, model, thinking, and reset. In TUI mode the
+command without arguments opens a native control menu with searchable model and thinking choices.
+RPC uses direct commands and notifications; print and JSON never wait for UI. Configurable shortcuts
+open the menu and toggle Auto, while `setStatus()` shows requested versus effective state.
+
+Each session receives a validated preference snapshot keyed by Pi's session-manager object. Status
+keeps global authorization, project restriction, requested Auto/model/thinking, and effective state
+separate. A missing scope, unavailable model, unsupported thinking level, disabled project, or
+missing authorization turns effective Auto off without rewriting the requested preference. Model
+selection uses `find()`, `getAvailable()`, and `scopedModels` without changing the primary model.
+Preferences never enter session JSONL or decision logs.
 
 Deterministic allowances, denials, ineligible cases, and `off`/`shadow` skip the model. Only eligible
 unresolved cases receive minimal normalized context, and a judge never overrides a deterministic

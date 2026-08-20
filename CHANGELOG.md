@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Add global Pi preferences for Auto, judge model, thinking, and shortcuts without changing judge authorization.
+- Add a Pi control menu, direct thinking command, quick Auto toggle, and compact status indicator.
+- Restore preferences in new sessions while keeping project restrictions, model scope, and model availability fail-closed.
+- Apply verified secondary-model thinking through Pi 0.84.2 with one isolated request, zero tools, no history, no retries, cancellation, and a local deadline.
+
 ## 0.3.0 - 2026-08-20
 
 - Move global and project policy files under the OpenCode or Pi configuration root.

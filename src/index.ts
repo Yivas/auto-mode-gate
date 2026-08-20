@@ -1,6 +1,11 @@
 export { AutoModeGate, RejectionTracker, mergeConfig } from "./core.ts";
 export { createShellAdapter, denialReason } from "./adapter.ts";
-export { getDefaultGlobalConfigPath, loadAdapterOptions, PROJECT_CONFIG_NAME } from "./config.ts";
+export {
+  getDefaultGlobalConfigPath,
+  getDefaultPiPreferencesPath,
+  loadAdapterOptions,
+  PROJECT_CONFIG_NAME,
+} from "./config.ts";
 export {
   PERMISSION_JUDGE_INSTRUCTION_V1,
   buildPermissionJudgeRequest,
@@ -8,6 +13,15 @@ export {
 } from "./judge.ts";
 export { AutoModeGateOpenCodePlugin, createOpenCodeHooks, createOpenCodePlugin } from "./opencode.ts";
 export { createPiExtension } from "./pi.ts";
+export {
+  createDefaultPiJudgePreferences,
+  createFilePiPreferenceRepository,
+  createMemoryPiPreferenceRepository,
+  createUnavailablePiPreferenceRepository,
+  parsePiJudgePreferences,
+  DEFAULT_PI_JUDGE_SHORTCUTS,
+  PI_JUDGE_PREFERENCES_NAME,
+} from "./pi-preferences.ts";
 export {
   PermissionJudgeSession,
   createPermissionJudgeModelReference,
@@ -27,14 +41,25 @@ export type {
 export type {
   PiAdapterOptionsResolver,
   PiExtension,
+  PiExtensionOptions,
   PiExtensionAPI,
   PiExtensionCommand,
   PiExtensionContext,
+  PiExtensionShortcut,
   PiModel,
   PiToolCallBlock,
   PiToolCallEvent,
 } from "./pi.ts";
-export type { ConfigDiscoveryOptions, ConfigHost } from "./config.ts";
+export type {
+  ConfigDiscoveryOptions,
+  ConfigHost,
+  LoadedAdapterOptions,
+} from "./config.ts";
+export type {
+  PiPreferenceRepository,
+  PiPreferencesFileOperations,
+  PiPreferencesLoadResult,
+} from "./pi-preferences.ts";
 export type {
   ActionContext,
   DecisionCode,
@@ -64,7 +89,11 @@ export type {
   PermissionJudgeRequest,
   PermissionJudgeResponse,
   PermissionJudgeSanitizedRequest,
+  PermissionJudgeSessionPolicy,
   PermissionJudgeSessionStatus,
+  PermissionJudgeThinking,
+  PiJudgePreferencesV1,
+  PiJudgeShortcuts,
   PermissionJudgeVerdict,
   PolicyVerdict,
   Shell,

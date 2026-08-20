@@ -8,7 +8,9 @@ import { AutoModeGatePlugin } from "../src/opencode-runtime.ts";
 import { createConfiguredPiExtension } from "../src/pi-runtime.ts";
 import type {
   OpenCodeToolBeforeInput,
+  PiExtensionCommand,
   PiExtensionContext,
+  PiModel,
   PiToolCallBlock,
   PiToolCallEvent,
 } from "../src/index.ts";
@@ -34,6 +36,72 @@ test("package manifest exposes the OpenCode and Pi runtime entries", async () =>
   assert.notEqual(manifest.private, true);
   assert.equal(manifest.exports["./server"], "./src/opencode-runtime.ts");
   assert.deepEqual(manifest.pi.extensions, ["./src/pi-runtime.ts"]);
+});
+
+test("configured Pi runtime still registers fail-closed when its root is invalid", async (t) => {
+  const root = await createTemporaryRoot(t, "auto-mode-gate-invalid-pi-root-");
+  const previous = process.env.PI_CODING_AGENT_DIR;
+  process.env.PI_CODING_AGENT_DIR = join(root, "missing-root");
+  t.after(() => {
+    if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
+    else process.env.PI_CODING_AGENT_DIR = previous;
+  });
+
+  const extension = createConfiguredPiExtension();
+  const handler = registerPiHandler(extension);
+  const result = await handler(
+    piEvent("bash", { command: dangerousCommand }),
+    { cwd: root },
+  );
+  assert.match(result?.reason ?? "", /AMG_DENY_INTERNAL_ERROR/u);
+});
+
+test("configured Pi runtime restores only the global preference file", async (t) => {
+  const root = await createTemporaryRoot(t, "auto-mode-gate-runtime-preferences-");
+  const hostRoots = await useHostRoots(t, root);
+  const project = join(root, "project");
+  await mkdir(join(project, ".pi"), { recursive: true });
+  const judgeModel: PiModel = {
+    provider: "fictional-provider",
+    id: "judge-model",
+    reasoning: true,
+  };
+  await writeFile(join(hostRoots.pi, "auto-mode-gate.json"), JSON.stringify({
+    mode: "enforce",
+    shell: testShell,
+    permissionJudge: {
+      enabled: true,
+      model: { provider: judgeModel.provider, id: judgeModel.id },
+      timeoutMs: 15_000,
+    },
+  }));
+  await writeFile(join(hostRoots.pi, "auto-mode-gate-preferences.json"), JSON.stringify({
+    version: 1,
+    autoEnabled: true,
+    thinking: "inherit",
+    shortcuts: { menu: "ctrl+alt+g", toggleAuto: "ctrl+alt+a" },
+  }));
+  await writeFile(join(project, ".pi", "auto-mode-gate-preferences.json"), JSON.stringify({
+    version: 1,
+    autoEnabled: false,
+    shortcuts: { menu: "ctrl+alt+g", toggleAuto: "ctrl+alt+a" },
+  }));
+
+  const command = registerPiCommand(createConfiguredPiExtension());
+  const notifications: string[] = [];
+  await command.handler("status", {
+    cwd: project,
+    sessionManager: {},
+    modelRegistry: {
+      getAvailable: () => [judgeModel],
+      find: (provider, id) => provider === judgeModel.provider && id === judgeModel.id
+        ? judgeModel
+        : undefined,
+    },
+    scopedModels: [],
+    ui: { notify(message) { notifications.push(message); } },
+  });
+  assert.match(notifications.at(-1) ?? "", /enabled/iu);
 });
 
 test("configured OpenCode and Pi runtimes honor host activation, modes, and precedence", async (t) => {
@@ -319,6 +387,20 @@ function piEvent(toolName: string, input: unknown): PiToolCallEvent {
   return { toolName, toolCallId: "fictional-call", input };
 }
 
+function registerPiCommand(
+  extension: ReturnType<typeof createConfiguredPiExtension>,
+): PiExtensionCommand {
+  let command: PiExtensionCommand | undefined;
+  extension({
+    on() {},
+    registerCommand(_name, registered) {
+      command = registered;
+    },
+  });
+  assert.ok(command);
+  return command;
+}
+
 function registerPiHandler(extension: ReturnType<typeof createConfiguredPiExtension>) {
   let handler:
     | ((
@@ -328,8 +410,7 @@ function registerPiHandler(extension: ReturnType<typeof createConfiguredPiExtens
     | undefined;
   extension({
     on(event, registeredHandler) {
-      assert.equal(event, "tool_call");
-      handler = registeredHandler;
+      if (event === "tool_call") handler = registeredHandler as typeof handler;
     },
   });
   assert.ok(handler);

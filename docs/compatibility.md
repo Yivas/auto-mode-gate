@@ -10,10 +10,20 @@ are validated host-contract baselines, not broad compatibility claims.
 | Pi | `v0.84.1`, `53fa77ccd8a279eb87e92294ef3687b03ff80112` | `tool_call` blocked before a stub effect | All ambiguity blocks | Authorized active sessions can use one isolated judge call |
 
 Pi `v0.84.2` at commit `914cf1472e715297caa30db4b9535d534a9eb718` was installed only in a
-temporary directory and exercised against a loopback OpenAI-compatible server. Ten probe cases
-covered async pre-tool waiting, model selection, zero tools, no reentry, timeout, cancellation,
-errors, invalid output, missing models, and session reset. No real inference or active profile was
-used.
+temporary directory and exercised against loopback OpenAI-compatible servers. The published
+`0.2.0` transport probe covered async pre-tool waiting, model selection, zero tools, no reentry,
+timeout, cancellation, errors, invalid output, missing models, and session reset. The AMG9 probe for
+current source also covered the public provider and model-auth facades, explicit thinking, model
+headers, one request, `maxRetries: 0`, unchanged primary model/thinking, global preference restore,
+direct RPC commands, reset, shortcuts, and status. No real inference, active profile, or real
+credential was used.
+
+Current source requires Pi `v0.84.2` for persisted judge controls and explicit secondary-model
+thinking. `inherit` keeps the previous `ModelRegistry.complete()` path. Explicit thinking uses the
+public provider `streamSimple()` contract and exact model auth from `getApiKeyAndHeaders()`. The
+selector reads `reasoning` and `thinkingLevelMap`; `xhigh` and `max` appear only when the model maps
+them, and any `null` mapping removes that level. The extension rejects unsupported levels instead
+of clamping them.
 
 ## Sources
 
@@ -82,8 +92,12 @@ an eligible case.
 - OpenCode sessions covered by the loaded plugin use the same hook, but a separately launched host
   process must load the plugin itself.
 - OpenCode's researched pre-tool hook does not include agent identity or an abort signal.
-- Pi 0.84.2 exposes the model-registry transport used by version 0.2.0; no equivalent isolated API
-  was verified in OpenCode 1.18.18.
+- Pi 0.84.2 exposes the model registry, provider, model-auth, simple-stream, UI, status, and shortcut
+  contracts used by current source; no equivalent isolated API was verified in OpenCode 1.18.18.
+- `scopedModels: []` means Pi did not restrict the model catalog. A missing `scopedModels` value is
+  treated as missing host evidence and disables effective Auto without erasing the requested state.
+- Shortcut changes require `/reload` or restart. Pi rejects reserved bindings and warns when another
+  extension claims the same non-reserved combination; Auto Mode Gate does not override that warning.
 - The 0.2.0 judge transport is Pi-specific. Package 0.1.0 remains deterministic-only.
 - Only simple literal Git `diff`, `log`, `show`, and `status` requests with a configured exact path
   can become eligible; values, paths, URLs, secrets, host context, and IDs are not transported.

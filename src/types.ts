@@ -83,6 +83,29 @@ export interface PermissionJudgeModelReference {
   readonly id: string;
 }
 
+export type PermissionJudgeThinking =
+  | "inherit"
+  | "off"
+  | "minimal"
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh"
+  | "max";
+
+export interface PiJudgeShortcuts {
+  readonly menu: string;
+  readonly toggleAuto: string;
+}
+
+export interface PiJudgePreferencesV1 {
+  readonly version: 1;
+  readonly autoEnabled: boolean;
+  readonly model?: PermissionJudgeModelReference;
+  readonly thinking?: PermissionJudgeThinking;
+  readonly shortcuts: PiJudgeShortcuts;
+}
+
 export type PermissionJudgeAuthorization =
   | { readonly authorized: false }
   | {
@@ -91,12 +114,32 @@ export type PermissionJudgeAuthorization =
       readonly timeoutMs: number;
     };
 
+export interface PermissionJudgeSessionPolicy {
+  readonly globalAuthorization: PermissionJudgeAuthorization;
+  readonly projectDisabled: boolean;
+  readonly effectiveTimeoutMs?: number;
+}
+
 export interface PermissionJudgeSessionStatus {
   readonly authorized: boolean;
   readonly available: boolean;
   readonly enabled: boolean;
   readonly model?: PermissionJudgeModelReference;
-  readonly reason?: "not-authorized" | "model-unavailable";
+  readonly reason?:
+    | "not-authorized"
+    | "project-disabled"
+    | "scope-unavailable"
+    | "model-unavailable"
+    | "thinking-unsupported";
+  readonly globalAuthorization: "authorized" | "not-authorized";
+  readonly projectRestriction: "none" | "disabled";
+  readonly autoRequested: boolean;
+  readonly autoEffective: boolean;
+  readonly preferredModel?: PermissionJudgeModelReference;
+  readonly effectiveModel?: PermissionJudgeModelReference;
+  readonly modelAvailable: boolean;
+  readonly thinkingRequested: PermissionJudgeThinking;
+  readonly thinkingEffective?: PermissionJudgeThinking;
 }
 
 export interface ActionContext {

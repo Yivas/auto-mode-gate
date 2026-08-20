@@ -2,15 +2,17 @@
 
 Auto Mode Gate is a host-neutral permission gate for OpenCode and Pi. It applies deterministic
 policy before Bash tool calls execute. Version 0.3.0 keeps global and project policy under each
-host, with migration from the shared `0.2.0` paths. Version 0.2.0 added an opt-in Pi judge for a
-closed sanitized Git request. Version 0.1.0 remains the deterministic-only release.
+host, with migration from the shared `0.2.0` paths. Current source adds global Pi preferences for
+Auto, the judge model, and thinking without changing the primary conversation model. Version 0.1.0
+remains the deterministic-only release.
 
 ## Status
 
 The core, OpenCode plugin, Pi extension, file-based configuration, sanitized JSONL logs, and
-installation flows are implemented and tested. Version 0.3.0 separates policy by host, migrates
-valid shared configuration without overwriting or deleting it, and retains the session-scoped Pi
-judge. It is published on [npm](https://www.npmjs.com/package/auto-mode-gate) and
+installation flows are implemented and tested. Version 0.3.0 separates policy by host and migrates
+valid shared configuration without overwriting or deleting it. The unreleased Pi controls persist
+preferences in the Pi configuration root and restore them for new sessions. Version 0.3.0 is
+published on [npm](https://www.npmjs.com/package/auto-mode-gate) and
 [GitHub](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.3.0). Read the
 [public documentation](https://yivas.github.io/auto-mode-gate/) for the guided installation and
 configuration reference. It supports only the validated baselines:
@@ -251,6 +253,38 @@ Modes behave as follows:
 
 `shadow` is an observation mode, not a security control.
 
+### Pi judge preferences in current source
+
+Pi stores user choices in `$PI_CODING_AGENT_DIR/auto-mode-gate-preferences.json` or
+`~/.pi/agent/auto-mode-gate-preferences.json`. This file does not authorize the judge and has no
+project variant. Global authorization and a project `permissionJudge.enabled: false` setting still
+win.
+
+```json
+{
+  "version": 1,
+  "autoEnabled": true,
+  "model": {
+    "provider": "example-provider",
+    "id": "example-model"
+  },
+  "thinking": "high",
+  "shortcuts": {
+    "menu": "ctrl+alt+g",
+    "toggleAuto": "ctrl+alt+a"
+  }
+}
+```
+
+`model` and `thinking` are optional overrides. Omitting them uses the authorized model and
+`inherit`. Thinking accepts `inherit`, `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`,
+but a model can support fewer levels. Invalid JSON, extra keys, oversized input, links, unreadable
+files, unavailable models, missing model scope, and unsupported thinking fail safely. A failed save
+leaves the current session unchanged. Changing shortcut values requires `/reload` or a restart.
+
+The defaults are `Ctrl+Alt+G` for the control menu and `Ctrl+Alt+A` for the quick Auto toggle. Pi
+may warn if another extension registers the same combination.
+
 ## Logs
 
 Each JSONL record contains only:
@@ -267,10 +301,23 @@ blocks with `AMG_DENY_INTERNAL_ERROR`. Logging is disabled when `logPath` is abs
 ## Operation
 
 OpenCode and Pi activate independently through their package entries or source loader files.
-Removing one installation leaves the other host unchanged. In Pi, `/amg-judge status`, `on`, `off`,
-`model <provider> <model-id>`, and `reset` control only the current in-memory session. Every session
-starts off. These commands do not change Pi's primary model, settings, or session JSONL. OpenCode
-has no judge command or model transport and blocks eligible cases as unavailable.
+Removing one installation leaves the other host unchanged. In current source, `/amg-judge` opens
+the Pi control menu in TUI mode. Direct commands remain available:
+
+```text
+/amg-judge status
+/amg-judge on
+/amg-judge off
+/amg-judge model <provider> <model-id>
+/amg-judge thinking <level>
+/amg-judge reset
+```
+
+RPC executes direct commands and emits notifications. Print and JSON modes do not open or wait for
+UI. Auto, model, and thinking changes are written before the current session adopts them. `reset`
+restores the authorized model and `inherit` while preserving Auto and shortcuts. These controls do
+not change Pi's primary model, primary thinking level, settings, or session JSONL. OpenCode has no
+judge command or model transport and blocks eligible cases as unavailable.
 
 Both hosts enforce only calls to their built-in `bash` tool. Other tools remain under native host
 permissions. A child process must load its own adapter. See

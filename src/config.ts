@@ -13,6 +13,7 @@ import type {
   GateConfig,
   GateMode,
   PermissionJudgeAuthorization,
+  PermissionJudgeSessionPolicy,
   Shell,
 } from "./types.ts";
 import { createPermissionJudgeModelReference } from "./session.ts";
@@ -23,6 +24,10 @@ export const LEGACY_PROJECT_CONFIG_NAME = ".auto-mode-gate.json";
 const MAX_TRUSTED_EXECUTABLE_PATHS = 256;
 
 export type ConfigHost = "opencode" | "pi";
+
+export interface LoadedAdapterOptions extends AdapterOptions {
+  readonly permissionJudgeSessionPolicy: PermissionJudgeSessionPolicy;
+}
 
 export interface ConfigDiscoveryOptions {
   readonly globalConfigPath?: string;
@@ -50,7 +55,7 @@ export function loadAdapterOptions(
   host: ConfigHost,
   projectDirectory?: string,
   discovery: ConfigDiscoveryOptions = {},
-): AdapterOptions {
+): LoadedAdapterOptions {
   try {
     const platform = discovery.platform ?? process.platform;
     const path = pathForPlatform(platform);
@@ -88,6 +93,7 @@ export function loadAdapterOptions(
       : undefined;
     const project = parseProjectConfig(projectValue, platform);
 
+    const permissionJudge = resolvePermissionJudge(global.permissionJudge, project);
     return {
       shell: global.shell,
       globalConfig: {
@@ -95,13 +101,22 @@ export function loadAdapterOptions(
         trustedExecutablePaths: global.trustedExecutablePaths,
       },
       projectConfig: project?.gateConfig,
-      permissionJudge: resolvePermissionJudge(global.permissionJudge, project),
+      permissionJudge,
+      permissionJudgeSessionPolicy: createPermissionJudgeSessionPolicy(
+        global.permissionJudge,
+        permissionJudge,
+      ),
       onDecision: global.logPath ? createDecisionLogger(global.logPath) : undefined,
     };
   } catch {
+    const permissionJudge = disabledPermissionJudge();
     return {
       globalConfig: { mode: "enforce", trustedExecutablePaths: [] },
-      permissionJudge: disabledPermissionJudge(),
+      permissionJudge,
+      permissionJudgeSessionPolicy: createPermissionJudgeSessionPolicy(
+        permissionJudge,
+        permissionJudge,
+      ),
       onDecision() {
         throw new Error("Auto Mode Gate configuration could not be loaded safely.");
       },
@@ -130,6 +145,26 @@ export function getDefaultGlobalConfigPath(
     ? path.join(home, ".config", "opencode")
     : path.join(home, ".pi", "agent");
   return path.join(root, PROJECT_CONFIG_NAME);
+}
+
+export function getDefaultPiPreferencesPath(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+  platform: NodeJS.Platform = process.platform,
+  homeDirectory = homedir(),
+): string {
+  const path = pathForPlatform(platform);
+  const configuredRoot = nonEmpty(env.PI_CODING_AGENT_DIR);
+  if (configuredRoot) {
+    const root = readAbsolutePath(configuredRoot, platform);
+    assertExistingDirectory(root);
+    return path.join(root, "auto-mode-gate-preferences.json");
+  }
+  return path.join(
+    readAbsolutePath(homeDirectory, platform),
+    ".pi",
+    "agent",
+    "auto-mode-gate-preferences.json",
+  );
 }
 
 export function getLegacyGlobalConfigPath(
@@ -277,6 +312,17 @@ function resolvePermissionJudge(
     authorized: true,
     defaultModel: global.defaultModel,
     timeoutMs: project?.judgeTimeoutMs ?? global.timeoutMs,
+  });
+}
+
+function createPermissionJudgeSessionPolicy(
+  global: PermissionJudgeAuthorization,
+  effective: PermissionJudgeAuthorization,
+): PermissionJudgeSessionPolicy {
+  return Object.freeze({
+    globalAuthorization: global,
+    projectDisabled: global.authorized && !effective.authorized,
+    ...(effective.authorized ? { effectiveTimeoutMs: effective.timeoutMs } : {}),
   });
 }
 
