@@ -1,10 +1,29 @@
-# Auto Mode Gate
+<p align="center">
+  <img src="wiki/public/favicon.svg" width="96" height="96" alt="Auto Mode Gate logo">
+</p>
 
-Auto Mode Gate is a host-neutral permission gate for OpenCode and Pi. It applies deterministic
-policy before Bash tool calls execute. Version 0.4.0 adds persistent global Pi controls for Auto,
-the judge model, and thinking without changing the primary conversation model. It retains the
-host-owned policy paths and safe migration introduced in 0.3.0. Version 0.1.0 remains the
-deterministic-only release.
+<h1 align="center">Auto Mode Gate</h1>
+
+<p align="center">
+  Deterministic-first permission control for OpenCode and Pi.
+</p>
+
+<p align="center">
+  <a href="https://github.com/Yivas/auto-mode-gate/actions/workflows/ci.yml"><img src="https://github.com/Yivas/auto-mode-gate/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+  <a href="https://www.npmjs.com/package/auto-mode-gate"><img src="https://img.shields.io/npm/v/auto-mode-gate?label=npm" alt="npm version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Yivas/auto-mode-gate" alt="MIT license"></a>
+</p>
+
+<p align="center">
+  <a href="https://yivas.github.io/auto-mode-gate/">Documentation</a> ·
+  <a href="#install-from-npm">Install</a> ·
+  <a href="https://github.com/Yivas/auto-mode-gate/releases/latest">Releases</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a>
+</p>
+
+Auto Mode Gate reviews Bash tool calls before they execute. It resolves deterministic policy first,
+then sends only eligible unresolved cases to the selected Pi judge. Deterministic denials always
+win, and missing or invalid evidence fails closed.
 
 ## Highlights
 
@@ -23,7 +42,9 @@ deterministic-only release.
 The core, OpenCode plugin, Pi extension, file-based configuration, sanitized JSONL logs, and
 installation flows are implemented and tested. Version 0.4.0 persists Pi judge preferences in the
 Pi configuration root and restores them for new sessions while preserving project restrictions.
-Version 0.4.0 is published on [npm](https://www.npmjs.com/package/auto-mode-gate) and
+Version 0.3.0 introduced host-owned policy paths and safe migration; version 0.1.0 remains the
+available deterministic-only line. Version 0.4.0 is published on
+[npm](https://www.npmjs.com/package/auto-mode-gate) and
 [GitHub](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.4.0). Read the
 [public documentation](https://yivas.github.io/auto-mode-gate/) for guided installation,
 configuration, migration, and Pi controls. It supports only the validated baselines:
