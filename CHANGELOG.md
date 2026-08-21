@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Make the README a focused entry point and keep full installation, migration, operation, and removal procedures in the public documentation.
+- Fail safely in source-install and manual-migration examples when scope or destination state is invalid.
+- Verify MDX links, the canonical logo/favicon pair, generated documentation metadata, and package contents in CI.
+- Align public contribution links with the maintained issues-only workflow.
+
 ## 0.4.1 - 2026-08-20
 
 - Refresh the README with a product header, direct navigation, clearer highlights, and npm-safe links.

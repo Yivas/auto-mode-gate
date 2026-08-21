@@ -34,11 +34,136 @@ Keep legacy until both hosts have migrated and you have verified each destinatio
 1. Stop or reload the target host so it is not reading configuration during the copy.
 2. Confirm the destination does not exist. Do not overwrite it.
 3. Create the host-owned parent directory if needed.
-4. Copy the legacy file with a create-only or no-clobber option that fails when the destination exists. Do not use a command that overwrites by default.
-5. Start the host and verify behavior.
-6. Repeat for the other host if you use both.
+4. Copy the legacy file with a create-only operation that fails when the destination exists.
+5. Compare the source and destination hashes.
+6. Start the host and verify behavior.
+7. Repeat for the other host if you use both.
 
-Use your operating system's ordinary copy command. Do not paste active configuration, paths, model names, credentials, or raw errors into public issues.
+### Windows PowerShell 5.1 or later
+
+Set both paths to the source and destination for one host. `FileMode.CreateNew` fails if another
+process creates the destination first. A failed partial copy removes only the destination created by
+this command.
+
+```powershell
+$sourcePath = "C:\absolute\path\to\legacy-config.json"
+$destinationRoot = "C:\absolute\path\to\the-host-config-root"
+$destinationPath = Join-Path $destinationRoot "auto-mode-gate.json"
+$sourceItem = Get-Item -LiteralPath $sourcePath -Force
+if ($sourceItem.PSIsContainer -or
+    ($sourceItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) {
+  throw "source must be a regular non-symlink file"
+}
+$current = $sourceItem.Directory
+while ($null -ne $current) {
+  if ($current.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+    throw "source path must not contain a symlink"
+  }
+  $current = $current.Parent
+}
+function Assert-SafeExistingTree([string]$Leaf, [string]$Root) {
+  $current = Get-Item -LiteralPath $Leaf -Force
+  $rootItem = Get-Item -LiteralPath $Root -Force
+  while ($true) {
+    if ($current.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+      throw "destination path must not contain a symlink"
+    }
+    if ($current.FullName -eq $rootItem.FullName) { return }
+    $current = $current.Parent
+    if ($null -eq $current) { throw "destination path escaped its host root" }
+  }
+}
+Assert-SafeExistingTree (Split-Path -Parent $destinationPath) $destinationRoot
+$sourceStream = [System.IO.File]::Open(
+  $sourcePath,
+  [System.IO.FileMode]::Open,
+  [System.IO.FileAccess]::Read,
+  [System.IO.FileShare]::Read
+)
+$destinationStream = $null
+$destinationCreated = $false
+try {
+  $destinationStream = [System.IO.File]::Open(
+    $destinationPath,
+    [System.IO.FileMode]::CreateNew,
+    [System.IO.FileAccess]::Write,
+    [System.IO.FileShare]::None
+  )
+  $destinationCreated = $true
+  $sourceStream.CopyTo($destinationStream)
+  $destinationStream.Flush($true)
+} catch {
+  if ($destinationCreated) {
+    $destinationStream.Dispose()
+    $destinationStream = $null
+    Remove-Item -LiteralPath $destinationPath -Force
+  }
+  throw
+} finally {
+  if ($null -ne $destinationStream) { $destinationStream.Dispose() }
+  $sourceStream.Dispose()
+}
+Get-FileHash -Algorithm SHA256 -LiteralPath $sourcePath, $destinationPath
+```
+
+### POSIX shell with Node 24
+
+Create the destination root and parent directory first. Set all three absolute paths. The script
+rejects a symlinked source or destination tree, confines the destination to the selected host root,
+and uses `COPYFILE_EXCL` so an existing destination wins.
+
+```bash
+source_path="/absolute/path/to/legacy-config.json"
+destination_root="/absolute/path/to/the-host-config-root"
+destination_path="$destination_root/auto-mode-gate.json"
+node --input-type=module - "$source_path" "$destination_path" "$destination_root" <<'NODE'
+import {
+  constants,
+  copyFileSync,
+  lstatSync,
+  realpathSync,
+} from 'node:fs';
+import {
+  dirname,
+  isAbsolute,
+  relative,
+  resolve,
+} from 'node:path';
+
+const [source, destination, root] = process.argv.slice(2).map((value) => resolve(value));
+const sourceStat = lstatSync(source);
+if (!sourceStat.isFile() || sourceStat.isSymbolicLink()) {
+  throw new Error('source must be a regular non-symlink file');
+}
+for (let current = dirname(source); ; current = dirname(current)) {
+  if (lstatSync(current).isSymbolicLink()) {
+    throw new Error('source path must not contain a symlink');
+  }
+  if (dirname(current) === current) break;
+}
+const realRoot = realpathSync(root);
+const parent = dirname(destination);
+const realParent = realpathSync(parent);
+const relativeParent = relative(realRoot, realParent);
+if (relativeParent.startsWith('..') || isAbsolute(relativeParent)) {
+  throw new Error('destination path escaped its host root');
+}
+for (let current = parent; ; current = dirname(current)) {
+  if (lstatSync(current).isSymbolicLink()) {
+    throw new Error('destination path must not contain a symlink');
+  }
+  if (current === root) break;
+  if (dirname(current) === current) {
+    throw new Error('destination path escaped its host root');
+  }
+}
+copyFileSync(source, destination, constants.COPYFILE_EXCL);
+NODE
+```
+
+Compare both files with the hashing tool available on your operating system before starting the
+host. Do not paste active configuration, paths, model names, credentials, or raw errors into public
+issues.
 
 ## Verify and clean up
 

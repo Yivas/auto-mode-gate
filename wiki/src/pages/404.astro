@@ -1,7 +1,7 @@
 ---
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
 
-const homeUrl = `${import.meta.env.BASE_URL}/`;
+const homeUrl = import.meta.env.BASE_URL;
 ---
 
 <StarlightPage

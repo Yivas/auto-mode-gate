@@ -39,6 +39,8 @@ jobs:
         run: |
           test -f dist/index.html
           test -f dist/404.html
+          test -f dist/favicon.svg
+          test -f dist/sitemap-index.xml
           test -f dist/getting-started/install/index.html
           test -f dist/getting-started/configure/index.html
           test -f dist/getting-started/migrate/index.html

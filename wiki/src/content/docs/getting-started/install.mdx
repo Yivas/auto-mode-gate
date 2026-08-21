@@ -75,17 +75,73 @@ the loader. Set `$scope` to `project` or `global`; `$targetProject` is used only
     ```powershell
     $scope = "project"
     $targetProject = "C:\path\to\project"
+    if ($scope -notin @("project", "global")) {
+      throw "scope must be project or global"
+    }
+    function Assert-SafeDirectoryPath([string]$Leaf, [string]$Root) {
+      $candidate = $Leaf
+      while (-not (Test-Path -LiteralPath $candidate)) {
+        $candidate = Split-Path -Parent $candidate
+        if ([string]::IsNullOrEmpty($candidate)) { throw "path escaped its scope root" }
+      }
+      $current = Get-Item -LiteralPath $candidate -Force
+      while ($true) {
+        if ($current.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+          throw "path must not contain a symlink"
+        }
+        if ($current.FullName -eq $Root) { return }
+        $current = $current.Parent
+        if ($null -eq $current) { throw "path escaped its scope root" }
+      }
+    }
     $source = [System.Uri]::new((Resolve-Path .\src\opencode-runtime.ts).Path).AbsoluteUri
     $pluginRoot = if ($scope -eq "project") {
-      Join-Path (Resolve-Path $targetProject).Path ".opencode\plugins"
+      $scopeRoot = (Get-Item -LiteralPath (Resolve-Path -LiteralPath $targetProject).Path -Force).FullName
+      Join-Path $scopeRoot ".opencode\plugins"
     } elseif ($env:OPENCODE_CONFIG_DIR) {
-      Join-Path $env:OPENCODE_CONFIG_DIR "plugins"
+      if (-not [System.IO.Path]::IsPathRooted($env:OPENCODE_CONFIG_DIR) -or
+          -not (Test-Path -LiteralPath $env:OPENCODE_CONFIG_DIR -PathType Container)) {
+        throw "OPENCODE_CONFIG_DIR must be an existing absolute directory"
+      }
+      $configuredRoot = Get-Item -LiteralPath $env:OPENCODE_CONFIG_DIR -Force
+      if ($configuredRoot.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+        throw "OPENCODE_CONFIG_DIR must not be a symlink"
+      }
+      $scopeRoot = $configuredRoot.FullName
+      Join-Path $scopeRoot "plugins"
     } else {
-      Join-Path $HOME ".config\opencode\plugins"
+      $scopeRoot = (Get-Item -LiteralPath $HOME -Force).FullName
+      Join-Path $scopeRoot ".config\opencode\plugins"
     }
+    Assert-SafeDirectoryPath $pluginRoot $scopeRoot
     New-Item -ItemType Directory -Force $pluginRoot | Out-Null
-    "export { AutoModeGatePlugin } from `"$source`";" |
-      Set-Content -Encoding utf8 (Join-Path $pluginRoot "auto-mode-gate.ts")
+    Assert-SafeDirectoryPath $pluginRoot $scopeRoot
+    $loaderPath = Join-Path $pluginRoot "auto-mode-gate.ts"
+    $loaderBytes = [System.Text.UTF8Encoding]::new($false).GetBytes(
+      "export { AutoModeGatePlugin } from `"$source`";"
+    )
+    $loaderStream = $null
+    $loaderCreated = $false
+    try {
+      $loaderStream = [System.IO.File]::Open(
+        $loaderPath,
+        [System.IO.FileMode]::CreateNew,
+        [System.IO.FileAccess]::Write,
+        [System.IO.FileShare]::None
+      )
+      $loaderCreated = $true
+      $loaderStream.Write($loaderBytes, 0, $loaderBytes.Length)
+      $loaderStream.Flush($true)
+    } catch {
+      if ($loaderCreated) {
+        $loaderStream.Dispose()
+        $loaderStream = $null
+        Remove-Item -LiteralPath $loaderPath -Force
+      }
+      throw
+    } finally {
+      if ($null -ne $loaderStream) { $loaderStream.Dispose() }
+    }
     ```
 
     Verify discovery:
@@ -103,17 +159,73 @@ the loader. Set `$scope` to `project` or `global`; `$targetProject` is used only
     ```powershell
     $scope = "project"
     $targetProject = "C:\path\to\project"
+    if ($scope -notin @("project", "global")) {
+      throw "scope must be project or global"
+    }
+    function Assert-SafeDirectoryPath([string]$Leaf, [string]$Root) {
+      $candidate = $Leaf
+      while (-not (Test-Path -LiteralPath $candidate)) {
+        $candidate = Split-Path -Parent $candidate
+        if ([string]::IsNullOrEmpty($candidate)) { throw "path escaped its scope root" }
+      }
+      $current = Get-Item -LiteralPath $candidate -Force
+      while ($true) {
+        if ($current.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+          throw "path must not contain a symlink"
+        }
+        if ($current.FullName -eq $Root) { return }
+        $current = $current.Parent
+        if ($null -eq $current) { throw "path escaped its scope root" }
+      }
+    }
     $source = [System.Uri]::new((Resolve-Path .\src\pi-runtime.ts).Path).AbsoluteUri
     $extensionRoot = if ($scope -eq "project") {
-      Join-Path (Resolve-Path $targetProject).Path ".pi\extensions\auto-mode-gate"
+      $scopeRoot = (Get-Item -LiteralPath (Resolve-Path -LiteralPath $targetProject).Path -Force).FullName
+      Join-Path $scopeRoot ".pi\extensions\auto-mode-gate"
     } elseif ($env:PI_CODING_AGENT_DIR) {
-      Join-Path $env:PI_CODING_AGENT_DIR "extensions\auto-mode-gate"
+      if (-not [System.IO.Path]::IsPathRooted($env:PI_CODING_AGENT_DIR) -or
+          -not (Test-Path -LiteralPath $env:PI_CODING_AGENT_DIR -PathType Container)) {
+        throw "PI_CODING_AGENT_DIR must be an existing absolute directory"
+      }
+      $configuredRoot = Get-Item -LiteralPath $env:PI_CODING_AGENT_DIR -Force
+      if ($configuredRoot.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+        throw "PI_CODING_AGENT_DIR must not be a symlink"
+      }
+      $scopeRoot = $configuredRoot.FullName
+      Join-Path $scopeRoot "extensions\auto-mode-gate"
     } else {
-      Join-Path $HOME ".pi\agent\extensions\auto-mode-gate"
+      $scopeRoot = (Get-Item -LiteralPath $HOME -Force).FullName
+      Join-Path $scopeRoot ".pi\agent\extensions\auto-mode-gate"
     }
+    Assert-SafeDirectoryPath $extensionRoot $scopeRoot
     New-Item -ItemType Directory -Force $extensionRoot | Out-Null
-    "export { default } from `"$source`";" |
-      Set-Content -Encoding utf8 (Join-Path $extensionRoot "index.ts")
+    Assert-SafeDirectoryPath $extensionRoot $scopeRoot
+    $loaderPath = Join-Path $extensionRoot "index.ts"
+    $loaderBytes = [System.Text.UTF8Encoding]::new($false).GetBytes(
+      "export { default } from `"$source`";"
+    )
+    $loaderStream = $null
+    $loaderCreated = $false
+    try {
+      $loaderStream = [System.IO.File]::Open(
+        $loaderPath,
+        [System.IO.FileMode]::CreateNew,
+        [System.IO.FileAccess]::Write,
+        [System.IO.FileShare]::None
+      )
+      $loaderCreated = $true
+      $loaderStream.Write($loaderBytes, 0, $loaderBytes.Length)
+      $loaderStream.Flush($true)
+    } catch {
+      if ($loaderCreated) {
+        $loaderStream.Dispose()
+        $loaderStream = $null
+        Remove-Item -LiteralPath $loaderPath -Force
+      }
+      throw
+    } finally {
+      if ($null -ne $loaderStream) { $loaderStream.Dispose() }
+    }
     ```
 
     Pi loads project extensions after the project is trusted. Check startup without contacting
@@ -148,12 +260,20 @@ the loader. Set `$scope` to `project` or `global`; `$targetProject` is used only
   </TabItem>
 </Tabs>
 
-For a source installation, delete only the loader created for Auto Mode Gate:
+For a source installation, resolve the same scope as the installation block. In the same
+PowerShell session, delete only the loader or extension directory calculated above:
 
 ```powershell
-Remove-Item <plugin-root>\auto-mode-gate.ts
-Remove-Item -Recurse <extension-root>\auto-mode-gate
+Remove-Item -LiteralPath (Join-Path $pluginRoot "auto-mode-gate.ts")
+Remove-Item -LiteralPath (Join-Path $extensionRoot "index.ts")
+if ((Get-ChildItem -LiteralPath $extensionRoot -Force).Count -eq 0) {
+  Remove-Item -LiteralPath $extensionRoot
+}
 ```
+
+Run only the line for the host you installed. If those variables are no longer available, repeat the
+path calculation without creating directories or writing a loader, inspect the resolved path, and
+then remove it.
 
 ## Next steps
 

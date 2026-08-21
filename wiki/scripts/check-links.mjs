@@ -6,59 +6,106 @@ const contentRoot = new URL("../src/content/docs/", import.meta.url);
 const sourceRoot = fileURLToPath(new URL("../src/", import.meta.url));
 const publicRoot = fileURLToPath(new URL("../public/", import.meta.url));
 const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
-const pages = await collectFiles(contentRoot, new Set([".md", ".mdx"]));
-const routes = new Set(pages.map(routeFor));
+const canonicalLogo = fileURLToPath(new URL("../src/assets/auto-mode-gate.svg", import.meta.url));
+const publicFavicon = fileURLToPath(new URL("../public/favicon.svg", import.meta.url));
 const rawTextTags = new Set(["script", "style", "textarea"]);
-const failures = [];
+const linkTags = new Set(["a", "linkcard"]);
+const assetTags = new Set(["img"]);
 
-for (const page of pages) {
-  const source = await readFile(page, "utf8");
-  const route = routeFor(page);
+export async function checkDocumentation() {
+  const pages = await collectFiles(contentRoot, new Set([".md", ".mdx"]));
+  const routes = new Set(pages.map(routeFor));
+  const failures = [];
 
-  for (const { target, type } of markdownTargets(source)) {
-    if (type === "asset") {
-      await validateAssetTarget(page, target);
-    } else {
-      validateRouteTarget(page, route, target);
+  for (const page of pages) {
+    const source = await readFile(page, "utf8");
+    const route = routeFor(page);
+
+    for (const { target, type } of documentationTargets(source)) {
+      if (type === "asset") {
+        await validateAssetTarget(page, target, failures);
+      } else {
+        validateRouteTarget(page, route, target, routes, failures);
+      }
     }
   }
 
-  const frontmatter = source.match(/^---\s*\n([\s\S]*?)\n---/u)?.[1] ?? "";
-  for (const match of frontmatter.matchAll(/^\s*link:\s*(\S+)\s*$/gmu)) {
-    validateRouteTarget(page, route, match[1]);
-  }
-}
-
-const repositoryMarkdown = await collectFiles(
-  new URL("../../", import.meta.url),
-  new Set([".md"]),
-  new Set([".git", "node_modules", "wiki"]),
-);
-
-for (const page of repositoryMarkdown) {
-  const source = await readFile(page, "utf8");
-  for (const { target } of markdownTargets(source)) {
-    if (isExternalTarget(target)) {
-      continue;
-    }
-
-    const path = localPath(target);
-    if (!path || !(await exists(resolve(dirname(fileURLToPath(page)), path)))) {
-      failures.push(`${relative(repositoryRoot, fileURLToPath(page))}: ${target}`);
-    }
-  }
-}
-
-if (failures.length > 0) {
-  console.error(`Broken links:\n${failures.join("\n")}`);
-  process.exitCode = 1;
-} else {
-  console.log(
-    `Checked ${pages.length} documentation routes and ${repositoryMarkdown.length} repository Markdown files.`,
+  const repositoryMarkdown = await collectFiles(
+    new URL("../../", import.meta.url),
+    new Set([".md"]),
+    new Set([".git", "node_modules", "wiki"]),
   );
+
+  for (const page of repositoryMarkdown) {
+    const source = await readFile(page, "utf8");
+    for (const { target } of markdownTargets(source)) {
+      if (isExternalTarget(target)) {
+        continue;
+      }
+
+      if (!(await resolvesWithin(repositoryRoot, dirname(fileURLToPath(page)), target))) {
+        failures.push(`${relative(repositoryRoot, fileURLToPath(page))}: ${target}`);
+      }
+    }
+  }
+
+  const [logo, favicon] = await Promise.all([readFile(canonicalLogo), readFile(publicFavicon)]);
+  if (!logo.equals(favicon)) {
+    failures.push("wiki/public/favicon.svg differs from the canonical wiki/src/assets/auto-mode-gate.svg");
+  }
+
+  return { failures, pageCount: pages.length, repositoryMarkdownCount: repositoryMarkdown.length };
 }
 
-function validateRouteTarget(page, route, target) {
+export function documentationTargets(source) {
+  const targets = markdownTargets(source);
+  const frontmatter = source.match(/^---\s*\n([\s\S]*?)\n---/u)?.[1] ?? "";
+  targets.push(...frontmatterTargets(frontmatter));
+  return targets;
+}
+
+export function frontmatterTargets(frontmatter) {
+  const targets = [];
+  for (const match of frontmatter.matchAll(/^\s*(link|file):\s*(.*?)\s*$/gmu)) {
+    const target = yamlScalar(match[2]);
+    if (target !== undefined) {
+      targets.push({ target, type: match[1] === "file" ? "asset" : "link" });
+    }
+  }
+  return targets;
+}
+
+function yamlScalar(raw) {
+  const value = raw.trim();
+  if (value === "" || value.startsWith("#")) {
+    return undefined;
+  }
+  if (value.startsWith('"')) {
+    const match = value.match(/^("(?:[^"\\]|\\.)*")\s*(?:#.*)?$/u);
+    return match ? JSON.parse(match[1]) : undefined;
+  }
+  if (value.startsWith("'")) {
+    const match = value.match(/^'((?:[^']|'')*)'\s*(?:#.*)?$/u);
+    return match ? match[1].replaceAll("''", "'") : undefined;
+  }
+  return value.replace(/\s+#.*$/u, "").trim() || undefined;
+}
+
+export function markdownTargets(source) {
+  const targets = [];
+  const searchable = stripMarkdownCode(source);
+
+  targets.push(...inlineMarkdownTargets(searchable));
+
+  for (const match of searchable.matchAll(/^\s{0,3}\[[^\]]+\]:\s*(.+)$/gmu)) {
+    targets.push({ target: destination(match[1]), type: "link" });
+  }
+  targets.push(...htmlTargets(searchable));
+
+  return targets;
+}
+
+function validateRouteTarget(page, route, target, routes, failures) {
   if (isExternalTarget(target)) {
     return;
   }
@@ -69,7 +116,7 @@ function validateRouteTarget(page, route, target) {
   }
 }
 
-async function validateAssetTarget(page, target) {
+async function validateAssetTarget(page, target, failures) {
   if (isExternalTarget(target)) {
     return;
   }
@@ -88,20 +135,6 @@ async function validateAssetTarget(page, target) {
   if (!isWithin(realRoot, realTarget)) {
     failures.push(`${relative(fileURLToPath(contentRoot), fileURLToPath(page))}: ${target}`);
   }
-}
-
-function markdownTargets(source) {
-  const targets = [];
-  const searchable = stripMarkdownCode(source);
-
-  targets.push(...inlineMarkdownTargets(searchable));
-
-  for (const match of searchable.matchAll(/^\s{0,3}\[[^\]]+\]:\s*(.+)$/gmu)) {
-    targets.push({ target: destination(match[1]), type: "link" });
-  }
-  targets.push(...htmlTargets(searchable));
-
-  return targets;
 }
 
 function stripMarkdownCode(source) {
@@ -166,7 +199,7 @@ function stripHtmlComments(source) {
   return result;
 }
 
-function htmlTargets(source) {
+export function htmlTargets(source) {
   const targets = [];
   let index = 0;
 
@@ -209,14 +242,19 @@ function htmlTargets(source) {
       index = closingTag.lastIndex;
       continue;
     }
-    if (!closing && (tag === "a" || tag === "img")) {
+    if (!closing) {
       const attributes = htmlAttributes(source.slice(cursor, end));
-      const attribute = tag === "img" ? "src" : "href";
-      if (attributes.has(attribute)) {
-        targets.push({
-          target: destination(attributes.get(attribute)),
-          type: attribute === "src" ? "asset" : "link",
-        });
+      if (linkTags.has(tag)) {
+        const target = staticAttributeTarget(attributes.get("href"));
+        if (target !== undefined) {
+          targets.push({ target, type: "link" });
+        }
+      }
+      if (assetTags.has(tag)) {
+        const target = staticAttributeTarget(attributes.get("src"));
+        if (target !== undefined) {
+          targets.push({ target, type: "asset" });
+        }
       }
     }
     index = end + 1;
@@ -225,17 +263,29 @@ function htmlTargets(source) {
   return targets;
 }
 
+function staticAttributeTarget(value) {
+  if (value === undefined || value === "" || value.startsWith("{")) {
+    return undefined;
+  }
+  return destination(value);
+}
+
 function htmlTagEnd(source, start) {
   let quote;
+  let braceDepth = 0;
   for (let index = start; index < source.length; index += 1) {
     const character = source[index];
     if (quote) {
-      if (character === quote) {
+      if (character === quote && source[index - 1] !== "\\") {
         quote = undefined;
       }
     } else if (character === '"' || character === "'") {
       quote = character;
-    } else if (character === ">") {
+    } else if (character === "{") {
+      braceDepth += 1;
+    } else if (character === "}" && braceDepth > 0) {
+      braceDepth -= 1;
+    } else if (character === ">" && braceDepth === 0) {
       return index;
     }
   }
@@ -350,6 +400,19 @@ function isWithin(root, target) {
   return path === "" || (!path.startsWith("..") && !isAbsolute(path));
 }
 
+export async function resolvesWithin(root, directory, target) {
+  const path = localPath(target);
+  if (!path) {
+    return false;
+  }
+  const resolved = resolve(directory, path);
+  if (!isWithin(root, resolved) || !(await exists(resolved))) {
+    return false;
+  }
+  const [realRoot, realTarget] = await Promise.all([realpath(root), realpath(resolved)]);
+  return isWithin(realRoot, realTarget);
+}
+
 function localPath(target) {
   const path = target.split(/[?#]/u, 1)[0];
   try {
@@ -392,4 +455,21 @@ function routeFor(page) {
     .replaceAll("\\", "/")
     .replace(/\.(?:md|mdx)$/u, "");
   return path === "index" ? "/" : `/${path}/`;
+}
+
+async function main() {
+  const result = await checkDocumentation();
+  if (result.failures.length > 0) {
+    console.error(`Broken links:\n${result.failures.join("\n")}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  console.log(
+    `Checked ${result.pageCount} documentation routes and ${result.repositoryMarkdownCount} repository Markdown files.`,
+  );
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  await main();
 }

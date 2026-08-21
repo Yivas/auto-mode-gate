@@ -30,6 +30,8 @@ jobs:
           node-version: 24.9.0
       - name: Run tests
         run: npm test
+      - name: Inspect package contents
+        run: npm pack --dry-run
 
   documentation:
     name: documentation

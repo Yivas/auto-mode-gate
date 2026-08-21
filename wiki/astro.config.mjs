@@ -1,5 +1,5 @@
-import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import { defineConfig } from 'astro/config';
 
 export default defineConfig({
   site: 'https://yivas.github.io',
@@ -13,9 +13,6 @@ export default defineConfig({
         alt: 'Auto Mode Gate',
       },
       customCss: ['./src/styles/custom.css'],
-      editLink: {
-        baseUrl: 'https://github.com/Yivas/auto-mode-gate/edit/main/wiki/',
-      },
       social: [
         {
           icon: 'github',
