@@ -43,9 +43,9 @@ win, and missing or invalid evidence fails closed.
 
 ## Status
 
-Version 0.4.1 is published on
+Version 0.4.2 is published on
 [npm](https://www.npmjs.com/package/auto-mode-gate) and
-[GitHub](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.4.1). It refreshes package
+[GitHub](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.4.2). It refreshes package
 presentation and metadata without changing the runtime introduced in 0.4.0. The current validated
 baselines are:
 
@@ -91,7 +91,7 @@ Declare the package in the `plugin` array of project or global `opencode.json`:
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["auto-mode-gate@0.4.1"]
+  "plugin": ["auto-mode-gate@0.4.2"]
 }
 ```
 
@@ -99,7 +99,7 @@ Merge the entry without removing existing plugins or configuration. You can also
 current project:
 
 ```text
-opencode plugin auto-mode-gate@0.4.1
+opencode plugin auto-mode-gate@0.4.2
 ```
 
 Add `--global` for every project. Verify the resolved configuration with:
@@ -113,7 +113,7 @@ opencode debug config
 Install globally:
 
 ```text
-pi install npm:auto-mode-gate@0.4.1
+pi install npm:auto-mode-gate@0.4.2
 ```
 
 Add `-l` for a project-local installation. Verify the package entry with:
@@ -168,7 +168,7 @@ Use the documentation for the complete schema and procedures:
 
 ## Pi controls
 
-Introduced in 0.4.0 and unchanged in 0.4.1, `/amg-judge` opens the Pi control menu in TUI mode.
+Introduced in 0.4.0 and unchanged in 0.4.2, `/amg-judge` opens the Pi control menu in TUI mode.
 Direct commands remain available:
 
 ```text

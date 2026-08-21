@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.2 - 2026-08-21
+
 - Make the README a focused entry point and keep full installation, migration, operation, and removal procedures in the public documentation.
 - Fail safely in source-install and manual-migration examples when scope or destination state is invalid.
 - Verify MDX links, the canonical logo/favicon pair, generated documentation metadata, and package contents in CI.

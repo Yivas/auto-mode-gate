@@ -1,6 +1,6 @@
 # Compatibility Baseline
 
-Auto Mode Gate 0.4.1 changes package presentation and metadata only. Its runtime contract is
+Auto Mode Gate 0.4.2 changes package presentation and metadata only. Its runtime contract is
 identical to 0.4.0, which adds persistent global Pi controls for Auto, judge model, thinking, and
 shortcuts. It preserves the Pi judge introduced in 0.2.0, the host-owned configuration and migration
 introduced in 0.3.0, and the deterministic 0.1.0 policy. The versions below are validated
@@ -15,12 +15,12 @@ Pi `v0.84.2` at commit `914cf1472e715297caa30db4b9535d534a9eb718` was installed 
 temporary directory and exercised against loopback OpenAI-compatible servers. The published
 `0.2.0` transport probe covered async pre-tool waiting, model selection, zero tools, no reentry,
 timeout, cancellation, errors, invalid output, missing models, and session reset. The 0.4.0 runtime
-probe, still applicable to 0.4.1, also covered the public provider and model-auth facades, explicit
+probe, still applicable to 0.4.2, also covered the public provider and model-auth facades, explicit
 thinking, model headers, one request, `maxRetries: 0`, unchanged primary model/thinking, global preference restore,
 direct RPC commands, reset, shortcuts, and status. No real inference, active profile, or real
 credential was used.
 
-Version 0.4.1 retains the Pi `v0.84.2` requirement for persisted judge controls and explicit
+Version 0.4.2 retains the Pi `v0.84.2` requirement for persisted judge controls and explicit
 secondary-model thinking introduced in 0.4.0. `inherit` keeps the previous `ModelRegistry.complete()`
 path. Explicit thinking uses the
 public provider `streamSimple()` contract and exact model auth from `getApiKeyAndHeaders()`. The

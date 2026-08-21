@@ -32,7 +32,7 @@ test("package manifest exposes the OpenCode and Pi runtime entries", async () =>
     readonly pi: { readonly extensions: readonly string[] };
   };
 
-  assert.equal(manifest.version, "0.4.1");
+  assert.equal(manifest.version, "0.4.2");
   assert.notEqual(manifest.private, true);
   assert.equal(manifest.exports["./server"], "./src/opencode-runtime.ts");
   assert.deepEqual(manifest.pi.extensions, ["./src/pi-runtime.ts"]);
