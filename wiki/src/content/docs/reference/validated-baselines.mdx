@@ -9,7 +9,7 @@ The versions below are validated host-contract baselines, not broad compatibilit
 
 | Component | Validated baseline | Evidence |
 |-|-|-|
-| OpenCode | `v1.18.18` | `tool.execute.before` blocked before a stub effect. |
+| OpenCode | `v1.18.18` | Historical source-host probe blocked before a stub effect; current Linux CI repeats control and protected runs with the packed candidate. |
 | Pi deterministic adapter | `v0.84.1` | `tool_call` blocked before a stub effect. |
 | Pi judge transport and controls | `v0.84.2`, commit `914cf1472e715297caa30db4b9535d534a9eb718` | Temporary loopback and host probes covered transport, thinking, preferences, commands, status, and reset. |
 | Node.js test suite | `24.9.0` | 246 unit, runtime, integration, privacy, race, and conformance tests passed for 0.4.2; runtime source is unchanged from 0.4.0. |
@@ -21,6 +21,13 @@ Version 0.4.2 retains the Pi 0.84.2 requirement for persistent controls and expl
 The source-level adapter suite replays shared deterministic and judge corpora. Host doubles cover pre-effect blocking, exact trusted paths, judge allow/deny/unavailable/error/invalid output, session isolation, zero-tool requests, no recursion, model absence, cancellation, monotonic deadlines, synchronous provider blocking, late completion, `shadow`, `off`, and OpenCode degradation.
 
 Runtime tests separately exercise host-owned configuration precedence, isolation, sanitized logs, malformed configuration, log-write failure, both host entry points, byte-preserving migration, destination precedence, symlink rejection, and non-directory failures. Pi tests also cover atomic preference replacement, concurrent writers, requested/effective state, model scope, thinking support, menu behavior, shortcuts, RPC, and TUI-only dialog gating. Isolated profile checks recorded in the compatibility evidence cover source loading and removal.
+
+The OpenCode host job is a separate black-box gate. It packs the current checkout, installs that
+tarball under a temporary root, and loads its `./server` entry through OpenCode 1.18.18. A control
+without the plugin must create a marker. The protected run must report `AMG_DENY_AMBIGUOUS` and
+leave the marker absent. A loopback provider supplies fixed streaming responses; no real model or
+credential is used. `opencode debug config` remains a discovery check and is not counted as proof of
+enforcement.
 
 ## Before claiming support
 

@@ -13,7 +13,22 @@ After installing the plugin, inspect the resolved configuration:
 opencode debug config
 ```
 
-The resolved `plugin` list must contain the Auto Mode Gate entry. Restart OpenCode after configuration changes.
+The resolved `plugin` list must contain the Auto Mode Gate entry. This confirms discovery only;
+it does not prove that the hook ran. Restart OpenCode after configuration changes.
+
+From a source checkout, the black-box host integration packs the current candidate, installs it
+under a temporary root, and runs OpenCode 1.18.18 twice against a loopback provider. The control
+must create a marker; the protected run must return `AMG_DENY_AMBIGUOUS` without creating it:
+
+```text
+npm run test:opencode-host
+```
+
+The reproducible gate runs on Linux CI and exits on Windows; the historical Windows host probe
+remains separate evidence. The integration uses no real credentials or external model inference and
+does not read or modify the active OpenCode profile. CI installs the pinned host from npm, and
+OpenCode may resolve bundled plugin/provider dependencies during setup; the configured model
+endpoint is loopback.
 
 ## Verify Pi
 
@@ -53,10 +68,12 @@ OpenCode must ignore Pi's global and `.pi` project destinations. Pi must ignore 
 
 ## Useful checks
 
-Run the project test suite from the repository root:
+Run the project test suite and, when the pinned host is available, the OpenCode integration from
+the repository root:
 
 ```text
 npm test
+npm run test:opencode-host
 ```
 
 The published package documents only the validated OpenCode, Pi, and Node baselines. Version 0.4.2 retains the persistent controls and explicit secondary-model thinking on Pi 0.84.2 introduced in 0.4.0, but no real-model inference was used for validation. Do not infer broader compatibility or provider safety from a successful local or loopback run.

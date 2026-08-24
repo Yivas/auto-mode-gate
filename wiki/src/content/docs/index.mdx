@@ -62,8 +62,8 @@ must load its own adapter, and coverage is limited to the documented hook paths.
 2. **Apply deterministic policy.** Safe, dangerous, and ineligible outcomes finish here.
 3. **Check judge eligibility.** Only configured Git `diff`, `log`, `show`, or `status` uncertainty
    can continue.
-4. **Ask once or block.** An authorized Pi session may make one isolated request. OpenCode and every
-   unavailable or invalid path block.
+4. **Ask once or block.** An authorized Pi session with effective Auto enabled may make one isolated
+   request. OpenCode and every unavailable or invalid path block.
 </Steps>
 
 | Result | Effect |
@@ -127,7 +127,8 @@ shortcuts, and inspect blocking reasons.
 
 ## Scope and limits
 
-The shared core does not execute commands or contact a network service. An authorized active Pi
-session may use the host's configured model transport for one eligible request. The project records
+The shared core does not execute commands or contact a network service. An authorized Pi session
+with effective Auto enabled may use the host's configured model transport for one eligible request.
+The project records
 only sanitized decision metadata when logging is configured. Read [coverage and
 boundaries](./guide/coverage-and-boundaries/) before treating the gate as a security control.

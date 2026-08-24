@@ -60,18 +60,30 @@ freeze the mutable host argument object before later pre-tool handlers run. They
 `shadow`, `off`, project configuration, cancellation, timeout, late completion, invalid output, and
 transport errors preserve the core's restrictions.
 
-These tests exercise the pinned hook shapes without starting either host. The executed baselines in
-the table remain evidence for hook ordering; the adapter implementation did not modify or start
-active installations.
+These tests exercise the pinned hook shapes without starting either host. The separate
+`test:opencode-host` command starts OpenCode 1.18.18 in temporary Linux profiles. It packs and
+installs the current candidate, loads that package directory through the real `./server` entry, and
+uses a fixed loopback provider response to request one Bash effect. The control run must create a
+marker; with the gate loaded, OpenCode must report `AMG_DENY_AMBIGUOUS` and leave the marker absent.
+The process receives isolated home, configuration, data, cache, and state roots plus a fictional
+loopback credential. It does not use an external model or the active OpenCode profile. CI installs
+the pinned host from npm, and OpenCode may resolve its bundled plugin/provider dependencies during
+setup; the configured model endpoint itself is loopback.
+
+The command exits on Windows. Historical Windows host evidence remains separate; Linux CI is the
+maintained packed-candidate gate. Neither result by
+itself proves a published registry tarball until the release process repeats artifact and channel
+verification.
 
 ## Source-install verification
 
 The source-install validation loaded the OpenCode and Pi runtime entries from local checkout URLs
 in isolated temporary profiles. OpenCode 1.18.18 discovered the loader through its configured
-plugin directory and
-reported it through `opencode debug config`; deleting that loader removed it while preserving the
-bootstrapped unrelated host configuration byte for byte. OpenCode may consult its public model
-catalog during startup.
+plugin directory and reported it through `opencode debug config`; deleting that loader removed it
+while preserving the bootstrapped unrelated host configuration byte for byte. This command proves
+discovery, not hook execution. The packed-candidate integration described above supplies the
+behavioral proof. OpenCode may consult its public model catalog during ordinary startup; the
+maintained host job disables that fetch and uses only its loopback provider for model traffic.
 
 Pi 0.84.1 loaded the extension from a temporary `PI_CODING_AGENT_DIR` during
 `pi --offline --list-models`. Deleting the extension directory disabled it and left unrelated

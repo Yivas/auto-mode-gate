@@ -108,6 +108,10 @@ Add `--global` for every project. Verify the resolved configuration with:
 opencode debug config
 ```
 
+This confirms that OpenCode discovered the package; it does not prove that a hook blocked a tool
+call. The current checkout's unreleased host integration performs that behavioral check against
+OpenCode 1.18.18 with a packed candidate and a loopback provider.
+
 ### Pi
 
 Install globally:
@@ -208,8 +212,20 @@ npm test
 ```
 
 The repository does not currently define a standalone TypeScript type-check command. CI runs the
-same test suite, inspects package contents, and builds the documentation. Preview package contents
-locally with:
+same test suite, inspects package contents, builds the documentation, and starts OpenCode 1.18.18 in
+isolated Linux profiles to test the packed plugin before a Bash effect. Run that host check when the
+validated OpenCode binary is available:
+
+```text
+npm run test:opencode-host
+```
+
+The script exits on Windows; CI is the reproducible Linux gate, while the pinned Windows host
+probe remains separate evidence. It uses temporary homes,
+configuration, data, cache, state, a packed candidate, a fictional credential, and a loopback
+provider with preprogrammed responses. It does not perform external model inference. CI installs the
+pinned host from npm, and OpenCode may resolve its bundled plugin/provider dependencies during setup;
+model traffic is restricted by configuration to the loopback endpoint. Preview package contents locally with:
 
 ```text
 npm pack --dry-run
