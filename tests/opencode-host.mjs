@@ -149,6 +149,9 @@ async function runOpenCodeProbe({ name, providerPort, plugin }) {
 
   const probeArgs = [
     "run",
+    "--print-logs",
+    "--log-level",
+    "DEBUG",
     "--auto",
     "--model",
     "amg-probe/probe",
