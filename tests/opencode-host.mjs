@@ -113,7 +113,8 @@ async function installPackedCandidate() {
 async function runOpenCodeProbe({ name, providerPort, plugin }) {
   const profileRoot = join(temporaryRoot, name);
   const projectDirectory = join(profileRoot, "project");
-  const configDirectory = join(profileRoot, "config");
+  const xdgConfigHome = join(profileRoot, "config");
+  const configDirectory = join(xdgConfigHome, "opencode");
   const cacheDirectory = join(profileRoot, "cache");
   await Promise.all([
     mkdir(projectDirectory, { recursive: true }),
@@ -121,6 +122,7 @@ async function runOpenCodeProbe({ name, providerPort, plugin }) {
     mkdir(join(profileRoot, "home"), { recursive: true }),
     mkdir(join(profileRoot, "data"), { recursive: true }),
     mkdir(join(profileRoot, "state"), { recursive: true }),
+    mkdir(join(profileRoot, "npm", "home"), { recursive: true }),
     mkdir(cacheDirectory, { recursive: true }),
   ]);
 
@@ -141,6 +143,19 @@ async function runOpenCodeProbe({ name, providerPort, plugin }) {
   };
   await writeFile(join(projectDirectory, "opencode.json"), JSON.stringify(openCodeConfig), "utf8");
   await writeFile(join(configDirectory, "opencode.json"), "{}\n", "utf8");
+  const npmCli = process.env.npm_execpath;
+  if (!npmCli) throw new Error("Run this integration through npm so npm_execpath is available.");
+  const pluginSdkInstall = await run(process.execPath, [
+    npmCli,
+    "install",
+    "--prefix",
+    configDirectory,
+    "--ignore-scripts",
+    "--no-audit",
+    "--no-fund",
+    "@opencode-ai/plugin@1.18.18",
+  ], { env: isolatedNpmEnvironment(join(profileRoot, "npm")), timeoutMs: 120_000 });
+  assert.equal(pluginSdkInstall.exitCode, 0, pluginSdkInstall.output);
   await writeFile(
     join(configDirectory, "auto-mode-gate.json"),
     `${JSON.stringify({ mode: "enforce", shell: "bash", trustedExecutablePaths: [] })}\n`,
@@ -159,7 +174,7 @@ async function runOpenCodeProbe({ name, providerPort, plugin }) {
   ];
   return run(opencodeCommand, probeArgs, {
     cwd: projectDirectory,
-    env: isolatedEnvironment(profileRoot, configDirectory, cacheDirectory),
+    env: isolatedEnvironment(profileRoot, xdgConfigHome, configDirectory, cacheDirectory),
     timeoutMs: 180_000,
     killProcessGroup: true,
   });
@@ -174,7 +189,7 @@ function isolatedNpmEnvironment(root) {
   });
 }
 
-function isolatedEnvironment(profileRoot, configDirectory, cacheDirectory) {
+function isolatedEnvironment(profileRoot, xdgConfigHome, configDirectory, cacheDirectory) {
   const home = join(profileRoot, "home");
   return Object.assign(baseProcessEnvironment(), {
     HOME: home,
@@ -186,7 +201,7 @@ function isolatedEnvironment(profileRoot, configDirectory, cacheDirectory) {
     OPENCODE_DISABLE_DEFAULT_PLUGINS: "1",
     OPENCODE_DISABLE_LSP_DOWNLOAD: "1",
     OPENCODE_DISABLE_MODELS_FETCH: "1",
-    XDG_CONFIG_HOME: configDirectory,
+    XDG_CONFIG_HOME: xdgConfigHome,
     XDG_DATA_HOME: join(profileRoot, "data"),
     XDG_CACHE_HOME: cacheDirectory,
     XDG_STATE_HOME: join(profileRoot, "state"),
