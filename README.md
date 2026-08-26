@@ -43,11 +43,11 @@ win, and missing or invalid evidence fails closed.
 
 ## Status
 
-Version 0.4.2 is published on
+Version 0.4.3 is published on
 [npm](https://www.npmjs.com/package/auto-mode-gate) and
-[GitHub](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.4.2). It refreshes package
-presentation and metadata without changing the runtime introduced in 0.4.0. The current validated
-baselines are:
+[GitHub](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.4.3). It adds a reproducible
+OpenCode host check and clarifies discovery versus enforcement without changing the runtime
+introduced in 0.4.0. The current validated baselines are:
 
 - OpenCode 1.18.18;
 - Pi 0.84.2 for persistent controls and isolated judge transport;
@@ -91,7 +91,7 @@ Declare the package in the `plugin` array of project or global `opencode.json`:
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["auto-mode-gate@0.4.2"]
+  "plugin": ["auto-mode-gate@0.4.3"]
 }
 ```
 
@@ -99,7 +99,7 @@ Merge the entry without removing existing plugins or configuration. You can also
 current project:
 
 ```text
-opencode plugin auto-mode-gate@0.4.2
+opencode plugin auto-mode-gate@0.4.3
 ```
 
 Add `--global` for every project. Verify the resolved configuration with:
@@ -109,15 +109,15 @@ opencode debug config
 ```
 
 This confirms that OpenCode discovered the package; it does not prove that a hook blocked a tool
-call. The current checkout's unreleased host integration performs that behavioral check against
-OpenCode 1.18.18 with a packed candidate and a loopback provider.
+call. The repository's host integration performs that behavioral check against OpenCode 1.18.18
+with a packed candidate and a loopback provider.
 
 ### Pi
 
 Install globally:
 
 ```text
-pi install npm:auto-mode-gate@0.4.2
+pi install npm:auto-mode-gate@0.4.3
 ```
 
 Add `-l` for a project-local installation. Verify the package entry with:
@@ -172,7 +172,7 @@ Use the documentation for the complete schema and procedures:
 
 ## Pi controls
 
-Introduced in 0.4.0 and unchanged in 0.4.2, `/amg-judge` opens the Pi control menu in TUI mode.
+Introduced in 0.4.0 and unchanged in 0.4.3, `/amg-judge` opens the Pi control menu in TUI mode.
 Direct commands remain available:
 
 ```text

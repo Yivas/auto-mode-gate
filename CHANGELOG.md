@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.3 - 2026-08-26
+
 - Add a black-box OpenCode 1.18.18 CI check that loads the packed candidate and proves a denied Bash call cannot create its marker.
 - Clarify that `opencode debug config` verifies plugin discovery, while behavioral enforcement requires the isolated host check.
 
