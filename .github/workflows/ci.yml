@@ -25,7 +25,7 @@ jobs:
           persist-credentials: false
       # v7.0.0
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 24.9.0
       - name: Run tests
@@ -45,7 +45,7 @@ jobs:
           persist-credentials: false
       # v7.0.0
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 24.9.0
       - name: Install validated OpenCode host
@@ -67,7 +67,7 @@ jobs:
           persist-credentials: false
       # v7.0.0
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 24.9.0
           cache: npm
