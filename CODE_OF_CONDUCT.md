@@ -24,8 +24,8 @@ policy explains the behavior expected in project spaces.
 
 ## Scope
 
-This policy applies to issues, pull requests, discussions, and other project spaces. It also applies
-when someone represents the project in public.
+This policy applies to issues, pull requests, private vulnerability reports, and other project
+spaces. It also applies when someone represents the project in public.
 
 ## Enforcement
 

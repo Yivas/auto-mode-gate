@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Declare the Node.js `24.9.0` validated baseline in the package `engines` field
+
 ## 0.4.3 - 2026-08-26
 
 - Add a black-box OpenCode 1.18.18 CI check that loads the packed candidate and proves a denied Bash call cannot create its marker.

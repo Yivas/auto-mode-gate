@@ -1,256 +1,68 @@
 ---
 title: Install Auto Mode Gate
-description: Install the OpenCode plugin or Pi extension from the published npm package or a checkout.
+description: Install the OpenCode plugin or Pi extension from the published npm package.
 ---
 
 import { TabItem, Tabs } from '@astrojs/starlight/components';
 
-Install the package only after reviewing its source. OpenCode plugins and Pi extensions run with the
-user's system permissions.
+Review the package source before installing. OpenCode plugins and Pi extensions run with your
+system permissions.
 
-:::note[Choose the required behavior]
-Package `0.4.3` adds a reproducible OpenCode host check and includes the same runtime behavior as
-0.4.0: persistent Pi controls, host-owned policy paths, and safe migration from shared `0.2.0`
-configuration. Package `0.1.0` remains deterministic-only and blocks all ambiguity.
+:::note[Published release and host baselines]
+Version `0.4.3` targets the validated OpenCode `1.18.18` and Pi `0.84.2` baselines. Package
+`0.1.0` remains deterministic-only and blocks all ambiguity.
 :::
 
 ## Install from npm
 
-Choose the host that should load the gate. Each host keeps its own installation and policy paths.
+Choose the host that loads the gate. OpenCode and Pi keep separate installations and policy paths.
 
 <Tabs syncKey="installation-host">
   <TabItem label="OpenCode" icon="puzzle">
-    Declare the package in the `plugin` array of your project or global `opencode.json`:
+    1. Install the package for the current project (add `--global` for every project):
 
-    ```json
-    {
-      "$schema": "https://opencode.ai/config.json",
-      "plugin": ["auto-mode-gate@0.4.3"]
-    }
-    ```
+       ```text
+       opencode plugin auto-mode-gate@0.4.3
+       ```
 
-    Merge that entry into the existing array without removing other plugins or configuration.
-    OpenCode resolves configured npm plugins when it starts.
+       Or add the entry to the `plugin` array of your project or global `opencode.json` without
+       removing existing plugins:
 
-    You can also install it for the current project:
+       ```json
+       {
+         "$schema": "https://opencode.ai/config.json",
+         "plugin": ["auto-mode-gate@0.4.3"]
+       }
+       ```
 
-    ```text
-    opencode plugin auto-mode-gate@0.4.3
-    ```
-
-    Add `--global` to install it for every project. Verify the resolved plugin list:
-
-    ```text
-    opencode debug config
-    ```
-
-    The resolved `plugin` list must contain the Auto Mode Gate entry. This proves discovery and
-    configuration resolution, not pre-tool enforcement. Use the isolated host integration described
-    under [Verify and operate](../../guide/verify-and-operate/) for the behavioral check.
+    2. Restart OpenCode so it resolves the configured npm plugin.
+    3. Confirm discovery and pre-tool behavior under [Verify and operate](../../guide/verify-and-operate/).
   </TabItem>
   <TabItem label="Pi" icon="puzzle">
-    Version 0.4.3 requires Pi 0.84.2 for persistent judge controls and explicit secondary-model
-    thinking, as first documented for 0.4.0.
+    Version `0.4.3` requires Pi `0.84.2` for persistent judge controls and explicit
+    secondary-model thinking.
 
-    Install globally:
+    1. Install globally (add `-l` for a project-local installation):
 
-    ```text
-    pi install npm:auto-mode-gate@0.4.3
-    ```
+       ```text
+       pi install npm:auto-mode-gate@0.4.3
+       ```
 
-    Add `-l` for a project-local installation. Verify the package entry:
-
-    ```text
-    pi list
-    ```
+    2. Confirm the package entry and runtime state under [Verify and operate](../../guide/verify-and-operate/).
   </TabItem>
 </Tabs>
 
-## Install from a checkout
-
-The source loader flow uses one small loader file and does not edit host settings. Run the commands
-from the checkout root, keep the checkout at the same path, and restart the host after installing
-the loader. Set `$scope` to `project` or `global`; `$targetProject` is used only for project scope.
-
-<Tabs syncKey="installation-host">
-  <TabItem label="OpenCode" icon="puzzle">
-    ```powershell
-    $scope = "project"
-    $targetProject = "C:\path\to\project"
-    if ($scope -notin @("project", "global")) {
-      throw "scope must be project or global"
-    }
-    function Assert-SafeDirectoryPath([string]$Leaf, [string]$Root) {
-      $candidate = $Leaf
-      while (-not (Test-Path -LiteralPath $candidate)) {
-        $candidate = Split-Path -Parent $candidate
-        if ([string]::IsNullOrEmpty($candidate)) { throw "path escaped its scope root" }
-      }
-      $current = Get-Item -LiteralPath $candidate -Force
-      while ($true) {
-        if ($current.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
-          throw "path must not contain a symlink"
-        }
-        if ($current.FullName -eq $Root) { return }
-        $current = $current.Parent
-        if ($null -eq $current) { throw "path escaped its scope root" }
-      }
-    }
-    $source = [System.Uri]::new((Resolve-Path .\src\opencode-runtime.ts).Path).AbsoluteUri
-    $pluginRoot = if ($scope -eq "project") {
-      $scopeRoot = (Get-Item -LiteralPath (Resolve-Path -LiteralPath $targetProject).Path -Force).FullName
-      Join-Path $scopeRoot ".opencode\plugins"
-    } elseif ($env:OPENCODE_CONFIG_DIR) {
-      if (-not [System.IO.Path]::IsPathRooted($env:OPENCODE_CONFIG_DIR) -or
-          -not (Test-Path -LiteralPath $env:OPENCODE_CONFIG_DIR -PathType Container)) {
-        throw "OPENCODE_CONFIG_DIR must be an existing absolute directory"
-      }
-      $configuredRoot = Get-Item -LiteralPath $env:OPENCODE_CONFIG_DIR -Force
-      if ($configuredRoot.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
-        throw "OPENCODE_CONFIG_DIR must not be a symlink"
-      }
-      $scopeRoot = $configuredRoot.FullName
-      Join-Path $scopeRoot "plugins"
-    } else {
-      $scopeRoot = (Get-Item -LiteralPath $HOME -Force).FullName
-      Join-Path $scopeRoot ".config\opencode\plugins"
-    }
-    Assert-SafeDirectoryPath $pluginRoot $scopeRoot
-    New-Item -ItemType Directory -Force $pluginRoot | Out-Null
-    Assert-SafeDirectoryPath $pluginRoot $scopeRoot
-    $loaderPath = Join-Path $pluginRoot "auto-mode-gate.ts"
-    $loaderBytes = [System.Text.UTF8Encoding]::new($false).GetBytes(
-      "export { AutoModeGatePlugin } from `"$source`";"
-    )
-    $loaderStream = $null
-    $loaderCreated = $false
-    try {
-      $loaderStream = [System.IO.File]::Open(
-        $loaderPath,
-        [System.IO.FileMode]::CreateNew,
-        [System.IO.FileAccess]::Write,
-        [System.IO.FileShare]::None
-      )
-      $loaderCreated = $true
-      $loaderStream.Write($loaderBytes, 0, $loaderBytes.Length)
-      $loaderStream.Flush($true)
-    } catch {
-      if ($loaderCreated) {
-        $loaderStream.Dispose()
-        $loaderStream = $null
-        Remove-Item -LiteralPath $loaderPath -Force
-      }
-      throw
-    } finally {
-      if ($null -ne $loaderStream) { $loaderStream.Dispose() }
-    }
-    ```
-
-    Verify discovery:
-
-    ```powershell
-    if ($scope -eq "project") {
-      Push-Location $targetProject
-      try { opencode debug config } finally { Pop-Location }
-    } else {
-      opencode debug config
-    }
-    ```
-  </TabItem>
-  <TabItem label="Pi" icon="puzzle">
-    ```powershell
-    $scope = "project"
-    $targetProject = "C:\path\to\project"
-    if ($scope -notin @("project", "global")) {
-      throw "scope must be project or global"
-    }
-    function Assert-SafeDirectoryPath([string]$Leaf, [string]$Root) {
-      $candidate = $Leaf
-      while (-not (Test-Path -LiteralPath $candidate)) {
-        $candidate = Split-Path -Parent $candidate
-        if ([string]::IsNullOrEmpty($candidate)) { throw "path escaped its scope root" }
-      }
-      $current = Get-Item -LiteralPath $candidate -Force
-      while ($true) {
-        if ($current.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
-          throw "path must not contain a symlink"
-        }
-        if ($current.FullName -eq $Root) { return }
-        $current = $current.Parent
-        if ($null -eq $current) { throw "path escaped its scope root" }
-      }
-    }
-    $source = [System.Uri]::new((Resolve-Path .\src\pi-runtime.ts).Path).AbsoluteUri
-    $extensionRoot = if ($scope -eq "project") {
-      $scopeRoot = (Get-Item -LiteralPath (Resolve-Path -LiteralPath $targetProject).Path -Force).FullName
-      Join-Path $scopeRoot ".pi\extensions\auto-mode-gate"
-    } elseif ($env:PI_CODING_AGENT_DIR) {
-      if (-not [System.IO.Path]::IsPathRooted($env:PI_CODING_AGENT_DIR) -or
-          -not (Test-Path -LiteralPath $env:PI_CODING_AGENT_DIR -PathType Container)) {
-        throw "PI_CODING_AGENT_DIR must be an existing absolute directory"
-      }
-      $configuredRoot = Get-Item -LiteralPath $env:PI_CODING_AGENT_DIR -Force
-      if ($configuredRoot.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
-        throw "PI_CODING_AGENT_DIR must not be a symlink"
-      }
-      $scopeRoot = $configuredRoot.FullName
-      Join-Path $scopeRoot "extensions\auto-mode-gate"
-    } else {
-      $scopeRoot = (Get-Item -LiteralPath $HOME -Force).FullName
-      Join-Path $scopeRoot ".pi\agent\extensions\auto-mode-gate"
-    }
-    Assert-SafeDirectoryPath $extensionRoot $scopeRoot
-    New-Item -ItemType Directory -Force $extensionRoot | Out-Null
-    Assert-SafeDirectoryPath $extensionRoot $scopeRoot
-    $loaderPath = Join-Path $extensionRoot "index.ts"
-    $loaderBytes = [System.Text.UTF8Encoding]::new($false).GetBytes(
-      "export { default } from `"$source`";"
-    )
-    $loaderStream = $null
-    $loaderCreated = $false
-    try {
-      $loaderStream = [System.IO.File]::Open(
-        $loaderPath,
-        [System.IO.FileMode]::CreateNew,
-        [System.IO.FileAccess]::Write,
-        [System.IO.FileShare]::None
-      )
-      $loaderCreated = $true
-      $loaderStream.Write($loaderBytes, 0, $loaderBytes.Length)
-      $loaderStream.Flush($true)
-    } catch {
-      if ($loaderCreated) {
-        $loaderStream.Dispose()
-        $loaderStream = $null
-        Remove-Item -LiteralPath $loaderPath -Force
-      }
-      throw
-    } finally {
-      if ($null -ne $loaderStream) { $loaderStream.Dispose() }
-    }
-    ```
-
-    Pi loads project extensions after the project is trusted. Check startup without contacting
-    model providers:
-
-    ```powershell
-    if ($scope -eq "project") {
-      Push-Location $targetProject
-      try { pi --offline --list-models } finally { Pop-Location }
-    } else {
-      pi --offline --list-models
-    }
-    ```
-  </TabItem>
-</Tabs>
+For a local checkout or a source loader, follow [install from a checkout](../install-from-checkout/).
 
 ## Remove an installation
 
 <Tabs syncKey="installation-host">
   <TabItem label="OpenCode" icon="puzzle">
-    OpenCode 1.18.18 has no plugin removal subcommand. Use `opencode debug config` to locate the
-    configuration that supplied the plugin, remove only the matching Auto Mode Gate entry from its
-    `plugin` array, restart OpenCode, and confirm that the plugin no longer appears.
+    OpenCode `1.18.18` has no plugin removal subcommand.
+
+    1. Run `opencode debug config` to locate the configuration file that supplied the plugin.
+    2. Remove only the Auto Mode Gate entry from its `plugin` array.
+    3. Restart OpenCode and confirm the plugin no longer appears.
   </TabItem>
   <TabItem label="Pi" icon="puzzle">
     Remove the package with the same scope used to install it:
@@ -261,21 +73,6 @@ the loader. Set `$scope` to `project` or `global`; `$targetProject` is used only
     ```
   </TabItem>
 </Tabs>
-
-For a source installation, resolve the same scope as the installation block. In the same
-PowerShell session, delete only the loader or extension directory calculated above:
-
-```powershell
-Remove-Item -LiteralPath (Join-Path $pluginRoot "auto-mode-gate.ts")
-Remove-Item -LiteralPath (Join-Path $extensionRoot "index.ts")
-if ((Get-ChildItem -LiteralPath $extensionRoot -Force).Count -eq 0) {
-  Remove-Item -LiteralPath $extensionRoot
-}
-```
-
-Run only the line for the host you installed. If those variables are no longer available, repeat the
-path calculation without creating directories or writing a loader, inspect the resolved path, and
-then remove it.
 
 ## Next steps
 

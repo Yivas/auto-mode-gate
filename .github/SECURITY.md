@@ -15,6 +15,21 @@ Review the [compatibility baseline](../docs/compatibility.md) before reporting b
 supported hook paths or host versions. Auto Mode Gate is a pre-tool policy gate, not an
 operating-system sandbox.
 
+## Outside the security model
+
+These limits are observable in the code and the tests, and they are not vulnerabilities:
+
+- Only the host's built-in `bash` tool is evaluated. Every other tool, and any command that does
+  not pass through the documented pre-tool hook, remains under native host permissions.
+- A separately launched child host process must load its own adapter. The parent host's gate does
+  not extend to it, and Pi exposes no native subagent identity to cover it.
+- The trusted executable path list is configuration authority, not an immutable file handle. A
+  local attacker who can replace a trusted executable, or replace a parent directory in its path
+  before execution, defeats the allowance.
+
+The [compatibility baseline](../docs/compatibility.md) records these and the remaining known
+limits under "Known limits".
+
 ## Report a vulnerability
 
 Use [GitHub private vulnerability reporting](https://github.com/Yivas/auto-mode-gate/security/advisories/new).

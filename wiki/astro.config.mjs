@@ -7,7 +7,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'Auto Mode Gate',
-      description: 'Deterministic-first Bash permission control for OpenCode and Pi.',
+      description: 'Deterministic-first permission control for OpenCode and Pi.',
       logo: {
         src: './src/assets/auto-mode-gate.svg',
         alt: 'Auto Mode Gate',
@@ -26,6 +26,7 @@ export default defineConfig({
           items: [
             { label: 'Overview', link: '/' },
             { slug: 'getting-started/install', label: 'Install' },
+            { slug: 'getting-started/install-from-checkout', label: 'Install from a checkout' },
             { slug: 'getting-started/configure', label: 'Configure' },
             { slug: 'getting-started/migrate', label: 'Migrate configuration' },
           ],

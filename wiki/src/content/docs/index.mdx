@@ -1,6 +1,11 @@
 ---
 title: Auto Mode Gate
-description: Deterministic-first Bash permission control for OpenCode and Pi.
+description: Deterministic-first permission control for OpenCode and Pi.
+head:
+  # Starlight appends " | <site title>" to every page title, so the home page would
+  # read "Auto Mode Gate | Auto Mode Gate". A frontmatter title entry replaces the default.
+  - tag: title
+    content: Auto Mode Gate
 hero:
   title: Control Bash permissions before execution
   tagline: Deterministic policy first. One isolated Pi judge call only for eligible uncertainty.
@@ -8,7 +13,7 @@ hero:
     file: ../../assets/auto-mode-gate.svg
     alt: Auto Mode Gate
   actions:
-    - text: Install 0.4.3
+    - text: Install
       link: ./getting-started/install/
       icon: right-arrow
       variant: primary
@@ -24,111 +29,94 @@ import { Badge, Card, CardGrid, LinkCard, Steps } from '@astrojs/starlight/compo
   <Badge text="MIT" variant="note" />
 </p>
 
-Auto Mode Gate reviews built-in Bash tool calls before OpenCode or Pi executes them. It resolves
-safe and dangerous cases without a model, then reserves the configured Pi judge for a narrow set of
-eligible Git requests.
+Auto Mode Gate is a pre-tool gate for OpenCode and Pi users who want deterministic policy checks
+before built-in `bash` commands execute. It resolves known-safe reads, dangerous commands, and
+unsupported syntax without a model, and fails closed on missing or malformed input.
 
-:::caution[Not an operating-system sandbox]
-Auto Mode Gate does not replace native OpenCode or Pi permissions. A separately launched child host
-must load its own adapter, and coverage is limited to the documented hook paths.
+Version `0.4.3` is published on [npm](https://www.npmjs.com/package/auto-mode-gate), [GitHub
+Releases](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.4.3), and the [documentation
+site](https://yivas.github.io/auto-mode-gate/). Validated baselines cover OpenCode `1.18.18`, Pi
+`0.84.2`, and Node `24.9.0` for the test suite.
+
+:::caution[Built-in bash only, not a sandbox]
+Auto Mode Gate covers only the built-in `bash` tool through validated host hooks. It is not an
+operating-system sandbox, does not replace native host permissions, and does not cover separately
+launched child hosts unless they load their own adapter. Read [coverage and
+boundaries](./guide/coverage-and-boundaries/) before relying on the gate.
 :::
 
 ## What the gate does
 
 <CardGrid>
   <Card title="Deterministic first" icon="approve-check-circle">
-    Exact rules decide known-safe reads, dangerous commands, and unsupported syntax before any
-    model-assisted decision.
+    Exact rules decide trusted read-only paths, dangerous commands, and unsupported syntax before any
+    model call.
   </Card>
   <Card title="Fail closed" icon="padlock">
-    Missing evidence, malformed configuration, timeout, invalid output, or unavailable transport
-    blocks the call.
+    Missing evidence, invalid configuration, timeout, cancellation, and transport errors block the
+    call.
   </Card>
   <Card title="Host-owned policy" icon="setting">
-    OpenCode and Pi keep separate global and project policy paths, with safe migration from the
-    shared 0.2.0 files.
+    OpenCode and Pi read separate global and project JSON files, with exclusive migration from `0.2.0`.
   </Card>
-  <Card title="Sanitized by design" icon="document">
-    Optional logs exclude commands, arguments, prompts, secrets, session IDs, and persistent
-    identifiers.
+  <Card title="Sanitized logs" icon="document">
+    Optional JSONL decision logs exclude commands, arguments, prompts, secrets, and identifiers.
   </Card>
 </CardGrid>
 
-## Follow a decision
-
-<Steps>
-1. **Normalize the call.** The host adapter records only the Bash call shape and evidence supplied
-   by the host.
-2. **Apply deterministic policy.** Safe, dangerous, and ineligible outcomes finish here.
-3. **Check judge eligibility.** Only configured Git `diff`, `log`, `show`, or `status` uncertainty
-   can continue.
-4. **Ask once or block.** An authorized Pi session with effective Auto enabled may make one isolated
-   request. OpenCode and every unavailable or invalid path block.
-</Steps>
-
-| Result | Effect |
+| Outcome | Effect |
 |-|-|
 | `allow-final` | Continue without a model call. |
 | `deny-final` | Block without a model call. |
 | `unresolved-ineligible` | Block without a model call. |
-| `unresolved-eligible` | Pi may ask once; OpenCode blocks as unavailable. |
+| `unresolved-eligible` | Pi may ask one isolated judge. OpenCode blocks as unavailable. |
 
-A model decision never overrides a deterministic denial. Native host permissions still apply after
-an Auto Mode Gate allowance.
+In Pi `0.84.2`, `/amg-judge` persists Auto state, secondary judge model, thinking level, and
+shortcuts across sessions without changing Pi's primary conversation model. Deterministic denials
+never yield to a model decision, and native host permissions still apply after an allowance.
 
-## Pi controls in 0.4.3
+## Quick start
 
-Introduced in 0.4.0 and unchanged in 0.4.3, the controls persist requested Auto state, judge model,
-thinking, and shortcuts across Pi sessions.
-Requested and effective state stay separate, so project restrictions, missing model scope, or an
-unsupported thinking level can disable effective Auto without erasing the user's choice.
+<Steps>
+1. **Install the adapter.** Run `opencode plugin auto-mode-gate@0.4.3` (or add `"auto-mode-gate@0.4.3"`
+   to the `plugin` array in `opencode.json`), or run `pi install npm:auto-mode-gate@0.4.3`.
+2. **Configure host policy.** Set `mode`, `shell`, and exact `trustedExecutablePaths` in your
+   host-owned JSON file.
+3. **Review decisions and boundaries.** Confirm discovery, runtime behavior, and native host
+   permissions before relying on automated runs.
+</Steps>
 
-The selected judge model receives closed enums for an eligible action. It receives no command text,
-values, paths, URLs, secrets, history, working directory, or IDs. Auto Mode Gate does not change
-Pi's primary conversation model or thinking level.
-
-[Use the Pi judge controls](./guide/pi-controls/) to open the menu, run direct commands, change
-shortcuts, and inspect blocking reasons.
-
-## Start here
+## Explore the docs
 
 <CardGrid>
   <LinkCard
     title="Install"
-    description="Load the published package in OpenCode or Pi."
+    description="Install from npm or a local checkout."
     href="./getting-started/install/"
   />
   <LinkCard
     title="Configure"
-    description="Create host-owned global and project policy."
+    description="Set host-owned global policy and project tightening."
     href="./getting-started/configure/"
   />
   <LinkCard
-    title="Migrate"
-    description="Copy valid 0.2.0 policy without overwriting either host."
-    href="./getting-started/migrate/"
-  />
-  <LinkCard
-    title="Verify and operate"
-    description="Confirm discovery, scope, native permissions, and runtime state."
-    href="./guide/verify-and-operate/"
-  />
-  <LinkCard
     title="Understand decisions"
-    description="Read the exact deterministic and judge boundaries."
+    description="Inspect deterministic precedence and Pi judge limits."
     href="./guide/decisions/"
   />
   <LinkCard
+    title="Coverage and boundaries"
+    description="See what the hooks enforce and what remains outside scope."
+    href="./guide/coverage-and-boundaries/"
+  />
+  <LinkCard
     title="Validated baselines"
-    description="Check the host and Node versions covered by release evidence."
+    description="Check the OpenCode, Pi, and Node versions backed by release evidence."
     href="./reference/validated-baselines/"
   />
+  <LinkCard
+    title="Participation"
+    description="Find issue forms, private security reporting, and MIT license terms."
+    href="./project/participation/"
+  />
 </CardGrid>
-
-## Scope and limits
-
-The shared core does not execute commands or contact a network service. An authorized Pi session
-with effective Auto enabled may use the host's configured model transport for one eligible request.
-The project records
-only sanitized decision metadata when logging is configured. Read [coverage and
-boundaries](./guide/coverage-and-boundaries/) before treating the gate as a security control.

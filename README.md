@@ -1,12 +1,8 @@
-<p align="center">
-  <img src="https://yivas.github.io/auto-mode-gate/favicon.svg" width="96" height="96" alt="Auto Mode Gate logo">
-</p>
+<p align="center"><img src="https://yivas.github.io/auto-mode-gate/favicon.svg" width="96" alt="Auto Mode Gate logo"></p>
 
 <h1 align="center">Auto Mode Gate</h1>
 
-<p align="center">
-  Deterministic-first permission control for OpenCode and Pi.
-</p>
+<p align="center">Deterministic-first permission control for OpenCode and Pi.</p>
 
 <p align="center">
   <a href="https://github.com/Yivas/auto-mode-gate/actions/workflows/ci.yml"><img src="https://github.com/Yivas/auto-mode-gate/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
@@ -14,166 +10,103 @@
   <a href="https://github.com/Yivas/auto-mode-gate/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Yivas/auto-mode-gate" alt="MIT license"></a>
 </p>
 
-<p align="center">
-  <a href="https://yivas.github.io/auto-mode-gate/">Documentation</a> ·
-  <a href="#install-from-npm">Install</a> ·
-  <a href="https://github.com/Yivas/auto-mode-gate/releases/latest">Releases</a> ·
-  <a href="https://github.com/Yivas/auto-mode-gate/blob/main/CONTRIBUTING.md">Contributing</a>
-</p>
-
-Auto Mode Gate reviews Bash tool calls before they execute. It resolves deterministic policy first,
-then sends only eligible unresolved cases to the selected Pi judge. Deterministic denials always
-win, and missing or invalid evidence fails closed.
+[Documentation](https://yivas.github.io/auto-mode-gate/) · [Install](#install-from-npm) · [Releases](https://github.com/Yivas/auto-mode-gate/releases/latest) · [Contributing](./CONTRIBUTING.md)
 
 > [!IMPORTANT]
-> Auto Mode Gate is not an operating-system sandbox and does not replace native OpenCode or Pi
-> permissions. A separately launched child host must load its own adapter.
+> Auto Mode Gate covers only the built-in `bash` tool through validated host hooks and is not an operating-system sandbox. A separately launched child host must load its own adapter. Read the [security policy](https://github.com/Yivas/auto-mode-gate/blob/main/.github/SECURITY.md).
 
-## Highlights
+## What it does
 
-- Apply deterministic policy before any model-assisted permission decision.
-- Allow only narrow read-only commands with an exact trusted executable path; unknown or missing
-  evidence fails closed.
-- Keep OpenCode and Pi policy under separate host-owned global and project paths, with safe migration
-  from the shared 0.2.0 files.
-- Persist Pi Auto, judge model, thinking, and shortcuts without changing the primary conversation
-  model.
-- Record optional sanitized decision metadata without commands, arguments, prompts, secrets,
-  session IDs, or telemetry.
+Auto Mode Gate is a pre-tool gate for people running OpenCode or Pi who want deterministic checks on built-in `bash` calls before they run. It evaluates fixed rules first, blocks dangerous or ambiguous commands, and allows only narrow read-only commands that start with a configured absolute executable path.
 
-## Status
+Only eligible unresolved Git requests can reach the secondary permission judge in Pi. OpenCode has no verified isolated judge transport and blocks those eligible cases as unavailable. Deterministic denials always hold, native host permissions still apply after an allowance, and missing or malformed inputs fail closed.
 
-Version 0.4.3 is published on
-[npm](https://www.npmjs.com/package/auto-mode-gate) and
-[GitHub](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.4.3). It adds a reproducible
-OpenCode host check and clarifies discovery versus enforcement without changing the runtime
-introduced in 0.4.0. The current validated baselines are:
+## Status and version
 
-- OpenCode 1.18.18;
-- Pi 0.84.2 for persistent controls and isolated judge transport;
-- Node 24.9.0 for the test suite.
+Version `0.4.3` is published on [npm](https://www.npmjs.com/package/auto-mode-gate), [GitHub Releases](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.4.3), and the [documentation site](https://yivas.github.io/auto-mode-gate/). It adds a reproducible OpenCode host integration check and clarifies discovery versus enforcement without changing the `0.4.0` runtime.
 
-Read the [validated-baselines reference](https://yivas.github.io/auto-mode-gate/reference/validated-baselines/)
-before treating another version as supported.
+Validated baselines:
+
+- OpenCode `1.18.18` (`tool.execute.before`)
+- Pi `0.84.2` (`tool_call`, persistent controls, and isolated judge transport)
+- Node `24.9.0` (test suite)
+
+Treat only these versions as validated baselines and check the [validated baselines reference](https://yivas.github.io/auto-mode-gate/reference/validated-baselines/) before assuming broader support.
 
 ## Decision flow
 
 ```text
 action
 └─ deterministic policy
-   ├─ safe                     -> continue without AI
-   ├─ dangerous                -> block without AI
+   ├─ allow-final              -> continue without AI
+   ├─ deny-final               -> block without AI
    ├─ unresolved-ineligible    -> block without AI
    └─ unresolved-eligible
       ├─ active Pi judge allow -> continue
       └─ deny/unavailable/fail -> block
 ```
 
-A narrow read-only allowance requires an exact absolute executable path present in the global
-trusted-path list. Bare names, shell builtins, unsupported syntax, missing evidence, malformed
-configuration, and internal errors fail closed. Native host permissions still apply after an
-allowance.
+Narrow read-only allowances require an exact absolute path from the global trusted-path list and matching adapter shell evidence. Bare command names, shell builtins, relative paths, unsupported syntax, and configuration errors fail closed.
 
-Only an eligible Git `diff`, `log`, `show`, or `status` request can reach the Pi judge in `enforce`.
-OpenCode has no equivalent isolated model transport and blocks those cases as unavailable. Read
-[how decisions work](https://yivas.github.io/auto-mode-gate/guide/decisions/) for the complete
-contract.
+Only simple literal Git `diff`, `log`, `show`, or `status` requests with a configured Git path become eligible for the judge in `enforce` mode. Pi sends one isolated request with closed enums and no command text, arguments, paths, or IDs. OpenCode blocks eligible cases as unavailable. See [how decisions work](https://yivas.github.io/auto-mode-gate/guide/decisions/).
 
 ## Install from npm
 
-Review the package source before installing it. Host plugins and extensions run with the user's
-system permissions.
+Review the package source before installing, because host plugins and extensions run with your system permissions.
 
 ### OpenCode
 
-Declare the package in the `plugin` array of project or global `opencode.json`:
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "plugin": ["auto-mode-gate@0.4.3"]
-}
-```
-
-Merge the entry without removing existing plugins or configuration. You can also install it for the
-current project:
+Declare `"auto-mode-gate@0.4.3"` in the `plugin` array of project or global `opencode.json`, or install it for the current project:
 
 ```text
 opencode plugin auto-mode-gate@0.4.3
-```
-
-Add `--global` for every project. Verify the resolved configuration with:
-
-```text
 opencode debug config
 ```
 
-This confirms that OpenCode discovered the package; it does not prove that a hook blocked a tool
-call. The repository's host integration performs that behavioral check against OpenCode 1.18.18
-with a packed candidate and a loopback provider.
+Add `--global` for every project. `opencode debug config` confirms package discovery, not pre-tool enforcement.
 
 ### Pi
 
-Install globally:
+Install globally (add `-l` for a project-local install) and verify the package entry:
 
 ```text
 pi install npm:auto-mode-gate@0.4.3
-```
-
-Add `-l` for a project-local installation. Verify the package entry with:
-
-```text
 pi list
 ```
 
-For source loaders, scope validation, startup checks, and safe removal, follow the
-[installation guide](https://yivas.github.io/auto-mode-gate/getting-started/install/).
+See the [installation guide](https://yivas.github.io/auto-mode-gate/getting-started/install/) for `opencode.json` examples, source loaders, and removal steps.
 
 ## Configure
 
-Version 0.3.0 and later keep policy under the host that loads it:
+OpenCode and Pi read separate host-owned JSON policy files:
 
 | Scope | OpenCode | Pi |
 |-|-|-|
-| Global | `$OPENCODE_CONFIG_DIR/auto-mode-gate.json`, or `~/.config/opencode/auto-mode-gate.json` | `$PI_CODING_AGENT_DIR/auto-mode-gate.json`, or `~/.pi/agent/auto-mode-gate.json` |
+| Global | `$OPENCODE_CONFIG_DIR/auto-mode-gate.json` or `~/.config/opencode/auto-mode-gate.json` | `$PI_CODING_AGENT_DIR/auto-mode-gate.json` or `~/.pi/agent/auto-mode-gate.json` |
 | Project | `<project>/.opencode/auto-mode-gate.json` | `<project>/.pi/auto-mode-gate.json` |
 
-A global configuration can set mode, shell, exact trusted executable paths, an optional sanitized
-log path, and Pi judge authorization:
+Minimal global policy example:
 
 ```json
 {
   "mode": "enforce",
   "shell": "powershell",
   "trustedExecutablePaths": [
-    "C:\\Windows\\System32\\where.exe",
     "C:\\Program Files\\Git\\cmd\\git.exe"
   ],
   "permissionJudge": {
     "enabled": true,
-    "model": {
-      "provider": "example-provider",
-      "id": "example-model"
-    },
+    "model": { "provider": "example-provider", "id": "example-model" },
     "timeoutMs": 15000
   }
 }
 ```
 
-Project policy can only tighten the global policy. Invalid JSON, unknown keys, relative paths,
-oversized input, unreadable files, and invalid host roots fail closed. Restart or reload the host
-after changing configuration.
-
-Use the documentation for the complete schema and procedures:
-
-- [Configure host-owned policy](https://yivas.github.io/auto-mode-gate/getting-started/configure/)
-- [Migrate 0.2.0 configuration without overwriting](https://yivas.github.io/auto-mode-gate/getting-started/migrate/)
-- [Verify and operate the gate](https://yivas.github.io/auto-mode-gate/guide/verify-and-operate/)
+Project policy can only tighten global policy. Invalid JSON, unknown keys, relative paths, and unreadable files fail closed. Restart or reload the host after edits. See [configure policy](https://yivas.github.io/auto-mode-gate/getting-started/configure/) and [migrate from 0.2.0](https://yivas.github.io/auto-mode-gate/getting-started/migrate/) for the full schema.
 
 ## Pi controls
 
-Introduced in 0.4.0 and unchanged in 0.4.3, `/amg-judge` opens the Pi control menu in TUI mode.
-Direct commands remain available:
+In Pi TUI mode, `/amg-judge` opens the control menu. Direct commands also work in RPC mode:
 
 ```text
 /amg-judge status
@@ -184,62 +117,27 @@ Direct commands remain available:
 /amg-judge reset
 ```
 
-Requested and effective state remain separate. Project restrictions, unavailable models, missing
-scope, or unsupported thinking can keep Auto inactive without erasing the user's saved choice.
-These controls never change Pi's primary model or thinking level. See the
-[Pi controls guide](https://yivas.github.io/auto-mode-gate/guide/pi-controls/) for preferences,
-shortcuts, RPC behavior, and failure handling.
+These controls persist requested Auto, secondary judge model, thinking level, and shortcuts (`Ctrl+Alt+G` and `Ctrl+Alt+A` by default) in global Pi preferences without changing Pi's primary conversation model or thinking. Requested and effective state remain separate, so project restrictions, unavailable models, or missing scope disable effective Auto without erasing saved choices. Read the [Pi controls guide](https://yivas.github.io/auto-mode-gate/guide/pi-controls/).
 
 ## Logs and coverage
 
-Optional JSONL logs contain only closed enums, verdicts, effects, stable decision codes, mode, and
-an in-memory repeated-rejection count. They exclude commands, arguments, prompts, context, secrets,
-session IDs, call IDs, and persistent identifiers. If an `enforce` decision cannot be written to a
-configured log, the tool call blocks.
+When global policy sets an absolute `logPath`, JSONL records include only closed enums, verdict, effect, stable decision code, mode, and an in-memory repeated-rejection count. Commands, arguments, prompts, secrets, session IDs, call IDs, and persistent identifiers are excluded. If an `enforce` decision cannot be written to the log, the call blocks.
 
-Both hosts cover only calls to their built-in `bash` tool. Other tools remain under native host
-permissions. Read [modes and sanitized logs](https://yivas.github.io/auto-mode-gate/guide/modes-and-logs/)
-and [coverage boundaries](https://yivas.github.io/auto-mode-gate/guide/coverage-and-boundaries/)
-before relying on the gate.
+Both adapters enforce only calls to the host's built-in `bash` tool. Other tools stay under native host permissions, and child host processes must load their own adapter. Read [modes and sanitized logs](https://yivas.github.io/auto-mode-gate/guide/modes-and-logs/) and [coverage boundaries](https://yivas.github.io/auto-mode-gate/guide/coverage-and-boundaries/).
 
 ## Development
 
-The package root has no installed dependencies. Run the 246 unit, runtime, integration, and shared
-conformance tests with Node 24.9.0:
+The package root has no external dependencies. Run the 246 unit, runtime, integration, and shared conformance tests on Node `24.9.0`, or inspect the tarball contents:
 
 ```text
 npm test
-```
-
-The repository does not currently define a standalone TypeScript type-check command. CI runs the
-same test suite, inspects package contents, builds the documentation, and starts OpenCode 1.18.18 in
-isolated Linux profiles to test the packed plugin before a Bash effect. Run that host check when the
-validated OpenCode binary is available:
-
-```text
-npm run test:opencode-host
-```
-
-The script exits on Windows; CI is the reproducible Linux gate, while the pinned Windows host
-probe remains separate evidence. It uses temporary homes,
-configuration, data, cache, state, a packed candidate, a fictional credential, and a loopback
-provider with preprogrammed responses. It does not perform external model inference. CI installs the
-pinned host from npm, and OpenCode may resolve its bundled plugin/provider dependencies during setup;
-model traffic is restricted by configuration to the loopback endpoint. Preview package contents locally with:
-
-```text
 npm pack --dry-run
 ```
 
+On Linux with OpenCode `1.18.18` installed, `npm run test:opencode-host` packs the candidate and verifies pre-tool blocking against a loopback provider without external inference (the script exits on Windows). CI runs `npm test`, `npm pack --dry-run`, the OpenCode host check, and the documentation build.
+
 ## License and participation
 
-Auto Mode Gate is an **open source maintained** project distributed under the
-[MIT License](https://github.com/Yivas/auto-mode-gate/blob/main/LICENSE). It accepts reproducible
-bug reports and private security reports; pull requests are not currently reviewed or merged.
+Auto Mode Gate is released under the MIT License. It accepts reproducible bug reports through [GitHub Issues](https://github.com/Yivas/auto-mode-gate/issues) and vulnerability reports through [GitHub private vulnerability reporting](https://github.com/Yivas/auto-mode-gate/security/advisories/new). Pull requests are not currently reviewed or merged. Auto Mode Gate is independent and is not affiliated with or endorsed by OpenCode or Pi.
 
-Read the [contribution policy](https://github.com/Yivas/auto-mode-gate/blob/main/CONTRIBUTING.md) and
-[Code of Conduct](https://github.com/Yivas/auto-mode-gate/blob/main/CODE_OF_CONDUCT.md). Report bugs
-through [GitHub Issues](https://github.com/Yivas/auto-mode-gate/issues) and vulnerabilities through
-[GitHub private vulnerability reporting](https://github.com/Yivas/auto-mode-gate/security/advisories/new).
-
-Auto Mode Gate is independent and is not affiliated with or endorsed by OpenCode or Pi.
+[Changelog](./CHANGELOG.md) · [Security Policy](https://github.com/Yivas/auto-mode-gate/blob/main/.github/SECURITY.md) · [Contributing](https://github.com/Yivas/auto-mode-gate/blob/main/CONTRIBUTING.md) · [Code of Conduct](https://github.com/Yivas/auto-mode-gate/blob/main/CODE_OF_CONDUCT.md) · [MIT License](./LICENSE)
