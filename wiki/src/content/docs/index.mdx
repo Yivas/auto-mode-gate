@@ -8,7 +8,7 @@ head:
     content: Auto Mode Gate
 hero:
   title: Control Bash permissions before execution
-  tagline: Deterministic policy first. One isolated Pi judge call only for eligible uncertainty.
+  tagline: Deterministic policy for the built-in Bash tool, not an operating-system sandbox. One isolated Pi judge call only for eligible uncertainty.
   image:
     file: ../../assets/auto-mode-gate.svg
     alt: Auto Mode Gate
@@ -25,7 +25,7 @@ hero:
 import { Badge, Card, CardGrid, LinkCard, Steps } from '@astrojs/starlight/components';
 
 <p class="release-badges">
-  <Badge text="Current release: 0.4.3" variant="success" />
+  <Badge text="Current release: 0.4.4" variant="success" />
   <Badge text="MIT" variant="note" />
 </p>
 
@@ -33,8 +33,8 @@ Auto Mode Gate is a pre-tool gate for OpenCode and Pi users who want determinist
 before built-in `bash` commands execute. It resolves known-safe reads, dangerous commands, and
 unsupported syntax without a model, and fails closed on missing or malformed input.
 
-Version `0.4.3` is published on [npm](https://www.npmjs.com/package/auto-mode-gate), [GitHub
-Releases](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.4.3), and the [documentation
+Version `0.4.4` is published on [npm](https://www.npmjs.com/package/auto-mode-gate), [GitHub
+Releases](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.4.4), and the [documentation
 site](https://yivas.github.io/auto-mode-gate/). Validated baselines cover OpenCode `1.18.18`, Pi
 `0.84.2`, and Node `24.9.0` for the test suite.
 
@@ -78,8 +78,8 @@ never yield to a model decision, and native host permissions still apply after a
 ## Quick start
 
 <Steps>
-1. **Install the adapter.** Run `opencode plugin auto-mode-gate@0.4.3` (or add `"auto-mode-gate@0.4.3"`
-   to the `plugin` array in `opencode.json`), or run `pi install npm:auto-mode-gate@0.4.3`.
+1. **Install the adapter.** Run `opencode plugin auto-mode-gate@0.4.4` (or add `"auto-mode-gate@0.4.4"`
+   to the `plugin` array in `opencode.json`), or run `pi install npm:auto-mode-gate@0.4.4`.
 2. **Configure host policy.** Set `mode`, `shell`, and exact `trustedExecutablePaths` in your
    host-owned JSON file.
 3. **Review decisions and boundaries.** Confirm discovery, runtime behavior, and native host

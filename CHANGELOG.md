@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.4 - 2026-11-24
+
 - Declare Node.js `>=24.9.0` in the package `engines` field, so npm warns on older runtimes
 - State in the security policy what falls outside the security model, starting with tools other than built-in `bash`
 - Rebuild the README around current status, decision flow, and installation, with security limits linked from the first screen

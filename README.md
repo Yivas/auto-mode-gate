@@ -10,7 +10,7 @@
   <a href="https://github.com/Yivas/auto-mode-gate/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Yivas/auto-mode-gate" alt="MIT license"></a>
 </p>
 
-[Documentation](https://yivas.github.io/auto-mode-gate/) · [Install](#install-from-npm) · [Releases](https://github.com/Yivas/auto-mode-gate/releases/latest) · [Contributing](./CONTRIBUTING.md)
+[Documentation](https://yivas.github.io/auto-mode-gate/) · [Install](#install-from-npm) · [Releases](https://github.com/Yivas/auto-mode-gate/releases/latest) · [Contributing](https://github.com/Yivas/auto-mode-gate/blob/main/CONTRIBUTING.md)
 
 > [!IMPORTANT]
 > Auto Mode Gate covers only the built-in `bash` tool through validated host hooks and is not an operating-system sandbox. A separately launched child host must load its own adapter. Read the [security policy](https://github.com/Yivas/auto-mode-gate/blob/main/.github/SECURITY.md).
@@ -23,7 +23,7 @@ Only eligible unresolved Git requests can reach the secondary permission judge i
 
 ## Status and version
 
-Version `0.4.3` is published on [npm](https://www.npmjs.com/package/auto-mode-gate), [GitHub Releases](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.4.3), and the [documentation site](https://yivas.github.io/auto-mode-gate/). It adds a reproducible OpenCode host integration check and clarifies discovery versus enforcement without changing the `0.4.0` runtime.
+Version `0.4.4` is published on [npm](https://www.npmjs.com/package/auto-mode-gate), [GitHub Releases](https://github.com/Yivas/auto-mode-gate/releases/tag/v0.4.4), and the [documentation site](https://yivas.github.io/auto-mode-gate/). It rebuilds the public documentation and declares the Node.js `24.9.0` baseline in the package without changing the `0.4.0` runtime.
 
 Validated baselines:
 
@@ -56,10 +56,10 @@ Review the package source before installing, because host plugins and extensions
 
 ### OpenCode
 
-Declare `"auto-mode-gate@0.4.3"` in the `plugin` array of project or global `opencode.json`, or install it for the current project:
+Declare `"auto-mode-gate@0.4.4"` in the `plugin` array of project or global `opencode.json`, or install it for the current project:
 
 ```text
-opencode plugin auto-mode-gate@0.4.3
+opencode plugin auto-mode-gate@0.4.4
 opencode debug config
 ```
 
@@ -70,7 +70,7 @@ Add `--global` for every project. `opencode debug config` confirms package disco
 Install globally (add `-l` for a project-local install) and verify the package entry:
 
 ```text
-pi install npm:auto-mode-gate@0.4.3
+pi install npm:auto-mode-gate@0.4.4
 pi list
 ```
 
@@ -140,4 +140,4 @@ On Linux with OpenCode `1.18.18` installed, `npm run test:opencode-host` packs t
 
 Auto Mode Gate is released under the MIT License. It accepts reproducible bug reports through [GitHub Issues](https://github.com/Yivas/auto-mode-gate/issues) and vulnerability reports through [GitHub private vulnerability reporting](https://github.com/Yivas/auto-mode-gate/security/advisories/new). Pull requests are not currently reviewed or merged. Auto Mode Gate is independent and is not affiliated with or endorsed by OpenCode or Pi.
 
-[Changelog](./CHANGELOG.md) · [Security Policy](https://github.com/Yivas/auto-mode-gate/blob/main/.github/SECURITY.md) · [Contributing](https://github.com/Yivas/auto-mode-gate/blob/main/CONTRIBUTING.md) · [Code of Conduct](https://github.com/Yivas/auto-mode-gate/blob/main/CODE_OF_CONDUCT.md) · [MIT License](./LICENSE)
+[Changelog](https://github.com/Yivas/auto-mode-gate/blob/main/CHANGELOG.md) · [Security Policy](https://github.com/Yivas/auto-mode-gate/blob/main/.github/SECURITY.md) · [Contributing](https://github.com/Yivas/auto-mode-gate/blob/main/CONTRIBUTING.md) · [Code of Conduct](https://github.com/Yivas/auto-mode-gate/blob/main/CODE_OF_CONDUCT.md) · [MIT License](https://github.com/Yivas/auto-mode-gate/blob/main/LICENSE)

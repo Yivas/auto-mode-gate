@@ -9,7 +9,7 @@ Review the package source before installing. OpenCode plugins and Pi extensions 
 system permissions.
 
 :::note[Published release and host baselines]
-Version `0.4.3` targets the validated OpenCode `1.18.18` and Pi `0.84.2` baselines. Package
+Version `0.4.4` targets the validated OpenCode `1.18.18` and Pi `0.84.2` baselines. Package
 `0.1.0` remains deterministic-only and blocks all ambiguity.
 :::
 
@@ -22,7 +22,7 @@ Choose the host that loads the gate. OpenCode and Pi keep separate installations
     1. Install the package for the current project (add `--global` for every project):
 
        ```text
-       opencode plugin auto-mode-gate@0.4.3
+       opencode plugin auto-mode-gate@0.4.4
        ```
 
        Or add the entry to the `plugin` array of your project or global `opencode.json` without
@@ -31,7 +31,7 @@ Choose the host that loads the gate. OpenCode and Pi keep separate installations
        ```json
        {
          "$schema": "https://opencode.ai/config.json",
-         "plugin": ["auto-mode-gate@0.4.3"]
+         "plugin": ["auto-mode-gate@0.4.4"]
        }
        ```
 
@@ -39,13 +39,13 @@ Choose the host that loads the gate. OpenCode and Pi keep separate installations
     3. Confirm discovery and pre-tool behavior under [Verify and operate](../../guide/verify-and-operate/).
   </TabItem>
   <TabItem label="Pi" icon="puzzle">
-    Version `0.4.3` requires Pi `0.84.2` for persistent judge controls and explicit
+    Version `0.4.4` requires Pi `0.84.2` for persistent judge controls and explicit
     secondary-model thinking.
 
     1. Install globally (add `-l` for a project-local installation):
 
        ```text
-       pi install npm:auto-mode-gate@0.4.3
+       pi install npm:auto-mode-gate@0.4.4
        ```
 
     2. Confirm the package entry and runtime state under [Verify and operate](../../guide/verify-and-operate/).
