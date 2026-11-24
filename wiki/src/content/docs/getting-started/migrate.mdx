@@ -5,12 +5,14 @@ description: Move shared 0.2.0 policy into host-owned OpenCode and Pi paths with
 
 Version `0.3.0` and later keep policy under the host that executes the hook. OpenCode and Pi can use different global and project policy without reading each other's destination. Version `0.2.0` reads the shared legacy paths below.
 
-## Legacy and destination paths
+## Legacy paths
 
-| Scope | Legacy source | OpenCode destination | Pi destination |
-|-|-|-|-|
-| Global | `$XDG_CONFIG_HOME/auto-mode-gate/config.json`, `%APPDATA%\auto-mode-gate\config.json` on Windows, or `~/.config/auto-mode-gate/config.json` | `$OPENCODE_CONFIG_DIR/auto-mode-gate.json` or `~/.config/opencode/auto-mode-gate.json` | `$PI_CODING_AGENT_DIR/auto-mode-gate.json` or `~/.pi/agent/auto-mode-gate.json` |
-| Project | `<project>/.auto-mode-gate.json` | `<project>/.opencode/auto-mode-gate.json` | `<project>/.pi/auto-mode-gate.json` |
+| Scope | Legacy source |
+|-|-|
+| Global | `$XDG_CONFIG_HOME/auto-mode-gate/config.json`, `%APPDATA%\auto-mode-gate\config.json` on Windows, or `~/.config/auto-mode-gate/config.json` |
+| Project | `<project>/.auto-mode-gate.json` |
+
+The OpenCode and Pi destinations are listed in [Configuration paths](../configure/#configuration-paths).
 
 ## Automatic migration
 
@@ -23,7 +25,7 @@ When a host-owned destination is absent, the adapter:
 5. publishes it without replacing a destination created by another process;
 6. leaves the legacy source unchanged.
 
-An existing destination is authoritative. The adapter ignores legacy even when legacy has newer or different content. Invalid destinations fail closed instead of falling back. Automatic publication requires same-filesystem hard-link support. If the filesystem rejects it, the host fails closed and you must migrate manually.
+An existing destination is authoritative, even when legacy has newer or different content. Invalid destinations fail closed instead of falling back. Automatic publication requires same-filesystem hard-link support. If the filesystem rejects it, the host fails closed and you must migrate manually.
 
 :::caution[No automatic cleanup]
 Keep legacy until both hosts have migrated and you have verified each destination. Automatic migration never deletes, truncates, renames, or reserializes it.
@@ -161,33 +163,27 @@ copyFileSync(source, destination, constants.COPYFILE_EXCL);
 NODE
 ```
 
-Compare both files with the hashing tool available on your operating system before starting the
-host. Do not paste active configuration, paths, model names, credentials, or raw errors into public
+Compare both file hashes before starting the host. Do not paste active configuration, paths, model names, credentials, or raw errors into public
 issues.
 
 ## Verify and clean up
 
-- Start OpenCode and confirm it reacts only to its global and `.opencode` project files.
-- Start Pi and confirm it reacts only to its global and `.pi` project files.
-- Change a harmless test setting in one destination and confirm the other host remains unchanged.
+- Start each host you use and confirm it reacts only to its own destination. [Verify and operate](../../guide/verify-and-operate/) describes the isolation check.
 - Keep a private backup before deleting legacy.
 - Remove legacy only after every host you use has a valid destination and rollback is no longer required.
 
 ## Roll back to 0.2.0
 
-Version `0.2.0` reads only the legacy shared paths. Leave or restore the legacy file before loading that version. Host-owned files are ignored by `0.2.0`.
+Version `0.2.0` reads only the legacy shared paths and ignores host-owned files. Leave or restore the legacy file before loading that version.
 
 To retry migration in a newer build, stop the host, remove only that host's destination, keep legacy in place, and start the host again. The adapter attempts a fresh exclusive copy.
 
 ## Troubleshooting
 
-- **Relative host root:** use an absolute `OPENCODE_CONFIG_DIR` or `PI_CODING_AGENT_DIR`.
-- **Missing or non-directory host root:** create a regular directory or unset the variable to use the fallback.
-- **Symlink or non-regular entry:** replace it with a regular directory or file you control.
+- **Rejected host root or entry:** set `OPENCODE_CONFIG_DIR` or `PI_CODING_AGENT_DIR` to an absolute path, create the directory if it is missing, replace symlinks with regular entries you control, or unset the variable to use the fallback.
 - **Invalid destination:** repair or remove it deliberately; the adapter will not downgrade to legacy.
 - **Unsupported publication or permissions:** migrate manually without overwriting the destination.
 - **Temporary file after interruption:** do not rename it into place. Remove it only after confirming no migration process is active.
-- **Changed configuration not loaded:** reload or restart the host.
 
 ## Next steps
 

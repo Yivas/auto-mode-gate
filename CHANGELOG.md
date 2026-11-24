@@ -2,7 +2,12 @@
 
 ## Unreleased
 
-- Declare the Node.js `24.9.0` validated baseline in the package `engines` field
+- Declare Node.js `>=24.9.0` in the package `engines` field, so npm warns on older runtimes
+- State in the security policy what falls outside the security model, starting with tools other than built-in `bash`
+- Rebuild the README around current status, decision flow, and installation, with security limits linked from the first screen
+- Split the documentation install guide into an npm page and a separate install-from-checkout page
+- Add a quick start to the documentation home page
+- Use one project description across the package, the README, and the documentation site
 
 ## 0.4.3 - 2026-08-26
 

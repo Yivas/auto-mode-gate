@@ -10,6 +10,7 @@ const requiredFiles = [
   "sitemap-index.xml",
   "pagefind/pagefind.js",
   "getting-started/install/index.html",
+  "getting-started/install-from-checkout/index.html",
   "getting-started/configure/index.html",
   "getting-started/migrate/index.html",
   "guide/verify-and-operate/index.html",

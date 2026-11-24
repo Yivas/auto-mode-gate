@@ -45,6 +45,7 @@ jobs:
           test -f dist/favicon.svg
           test -f dist/sitemap-index.xml
           test -f dist/getting-started/install/index.html
+          test -f dist/getting-started/install-from-checkout/index.html
           test -f dist/getting-started/configure/index.html
           test -f dist/getting-started/migrate/index.html
           test -f dist/guide/verify-and-operate/index.html
