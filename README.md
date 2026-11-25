@@ -13,7 +13,7 @@
 [Documentation](https://yivas.github.io/auto-mode-gate/) · [Install](#install-from-npm) · [Releases](https://github.com/Yivas/auto-mode-gate/releases/latest) · [Contributing](https://github.com/Yivas/auto-mode-gate/blob/main/CONTRIBUTING.md)
 
 > [!IMPORTANT]
-> Auto Mode Gate covers only the built-in `bash` tool through validated host hooks and is not an operating-system sandbox. A separately launched child host must load its own adapter. Read the [security policy](https://github.com/Yivas/auto-mode-gate/blob/main/.github/SECURITY.md).
+> Auto Mode Gate covers only the built-in `bash` tool through validated host hooks and is not an operating-system sandbox. A separately launched child host must load its own adapter. OpenCode 2.x is not supported yet: it does not load this plugin, so the gate gives no protection there. Read the [security policy](https://github.com/Yivas/auto-mode-gate/blob/main/.github/SECURITY.md).
 
 ## What it does
 

@@ -8,6 +8,7 @@ Auto Mode Gate is a pre-tool policy gate, not an operating-system sandbox. Its g
 ## Host coverage
 
 - OpenCode uses `tool.execute.before` for the validated 1.18.18 baseline.
+- OpenCode 2.x is not supported yet: it does not load this plugin, so the gate gives no protection there.
 - Pi uses `tool_call` for the executed 0.84.1 deterministic baseline and the isolated 0.84.2 judge probe.
 - Both adapters enforce only the built-in `bash` tool.
 - Other tools remain under native host permissions.

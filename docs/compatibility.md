@@ -36,6 +36,16 @@ requested/effective authorization, model, and thinking fields. TypeScript consum
 status literals must supply the expanded shape when updating from a pre-0.4.0 release to any 0.4.x
 release. Consumers that only read status values can continue using the existing fields.
 
+## OpenCode 2.x
+
+OpenCode 2.x is not supported yet: it does not load this plugin, so the gate gives no protection
+there. Its plugin loader accepts a server entry only when its default export has an `id` and a
+`setup` or `effect` function, and it has no compatibility layer for 1.x plugins. Auto Mode Gate
+0.4.4 ships a 1.x plugin, so OpenCode 2.x records it as a failed plugin and keeps running without
+the gate: no tool call is evaluated. This comes from reading the OpenCode `v2.4.1` source at commit
+`6f0514052a3c859894ad01bb14cc14dda1e44b96` (`packages/core/src/plugin/module.ts`), not from
+running the host. Until a release adds 2.x support, use OpenCode `1.18.18`.
+
 ## Sources
 
 OpenCode:
@@ -45,6 +55,8 @@ OpenCode:
 - [`v1.18.18` hook types](https://github.com/anomalyco/opencode/blob/31406ccc51b4bd2a4e1e086b2bcaa5f7f804f26d/packages/plugin/src/index.ts)
 - [`v1.18.18` pre-tool invocation](https://github.com/anomalyco/opencode/blob/31406ccc51b4bd2a4e1e086b2bcaa5f7f804f26d/packages/opencode/src/session/tools.ts)
 - [Official plugin documentation](https://opencode.ai/docs/plugins/)
+- [`v2.4.1` plugin module schema](https://github.com/anomalyco/opencode/blob/6f0514052a3c859894ad01bb14cc14dda1e44b96/packages/core/src/plugin/module.ts)
+- [`v2.4.1` plugin load failure handling](https://github.com/anomalyco/opencode/blob/6f0514052a3c859894ad01bb14cc14dda1e44b96/packages/core/src/plugin/supervisor.ts)
 
 Pi:
 

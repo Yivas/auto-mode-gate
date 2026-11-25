@@ -11,6 +11,10 @@ both runtime adapters at their validated host baselines.
 | OpenCode adapter | OpenCode 1.18.18 |
 | Pi adapter | Pi 0.84.2 |
 
+OpenCode 2.x is not supported yet: it does not load this plugin, so the gate gives no protection
+there. The [compatibility baseline](../docs/compatibility.md#opencode-2x) shows the source evidence,
+which comes from the pinned `v2.4.1` source and not from a runtime trace.
+
 Review the [compatibility baseline](../docs/compatibility.md) before reporting behavior outside the
 supported hook paths or host versions. Auto Mode Gate is a pre-tool policy gate, not an
 operating-system sandbox.
