@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Gate Pi `powershell` tool calls with PowerShell rules before they run, which previously bypassed the gate
+
 ## 0.4.4 - 2026-11-24
 
 - Declare Node.js `>=24.9.0` in the package `engines` field, so npm warns on older runtimes

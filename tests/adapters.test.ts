@@ -259,6 +259,36 @@ test("Pi blocks ambiguity without invoking future confirmation capability", asyn
   assert.equal(confirmations, 0);
 });
 
+test("Pi blocks a denied PowerShell tool call even when Bash is configured", async () => {
+  const handler = registerPiHandler(createPiExtension({ shell: "bash" }));
+  let effectRan = false;
+  const result = await handler(piEvent("powershell", { command: "Remove-Item build" }), {});
+  if (!result?.block) {
+    effectRan = true;
+  }
+
+  assert.match(result?.reason ?? "", /AMG_DENY_DANGEROUS_COMMAND/u);
+  assert.equal(effectRan, false);
+});
+
+test("Pi allows a trusted PowerShell executable only through PowerShell parsing", async () => {
+  const handler = registerPiHandler(
+    createPiExtension({
+      shell: "bash",
+      globalConfig: { mode: "enforce", trustedExecutablePaths: ["C:\\trusted\\where.exe"] },
+    }),
+  );
+  const input = { command: "C:\\trusted\\where.exe cmd.exe" };
+
+  assert.equal(await handler(piEvent("powershell", input), {}), undefined);
+  // An ignored tool also returns undefined. Only an evaluated allow freezes the input.
+  assert.equal(Object.isFrozen(input), true);
+  assert.match(
+    (await handler(piEvent("bash", { command: "C:\\trusted\\where.exe cmd.exe" }), {}))?.reason ?? "",
+    /AMG_DENY_/u,
+  );
+});
+
 test("Pi ignores tools outside the shell adapter scope", async () => {
   const handler = registerPiHandler(createPiExtension());
   assert.equal(await handler(piEvent("read", { path: "file.txt" }), {}), undefined);

@@ -38,7 +38,15 @@ import type {
   PermissionJudgeSessionPolicy,
   PermissionJudgeSessionStatus,
   PermissionJudgeThinking,
+  Shell,
 } from "./types.ts";
+
+// `bash` keeps the configured shell. Pi's `powershell` tool always runs PowerShell, so its command is
+// parsed with PowerShell rules whatever shell the configuration declares.
+const PI_SHELL_TOOLS: ReadonlyMap<string, { readonly shell?: Shell }> = new Map([
+  ["bash", Object.freeze({})],
+  ["powershell", Object.freeze({ shell: "powershell" as const })],
+]);
 
 const MAX_CACHED_ADAPTERS = 32;
 const MAX_COMPLETION_CONTENT_BLOCKS = 16;
@@ -217,7 +225,8 @@ function registerToolCall(
 ): void {
   pi.on("tool_call", async (event, context) => {
     try {
-      if (event.toolName !== "bash") return undefined;
+      if (!PI_SHELL_TOOLS.has(event.toolName)) return undefined;
+      const shellTool = PI_SHELL_TOOLS.get(event.toolName) ?? {};
 
       const snapshot = snapshotHostInput(event.input);
       if (snapshot === null) {
@@ -226,7 +235,7 @@ function registerToolCall(
           reason: "AMG_DENY_INTERNAL_ERROR: The action input could not be read safely.",
         };
       }
-      const call = { command: snapshot?.command };
+      const call = { command: snapshot?.command, shell: shellTool.shell };
       const project = resolveProject(context);
       const commandSession = resolveSession(context);
       const status = commandSession?.session.status(commandSession.availability);
